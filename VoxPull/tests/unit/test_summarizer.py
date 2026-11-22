@@ -187,7 +187,7 @@ async def test_summarizer_persists_and_restores_full_config(tmp_path) -> None:
     assert config_path.is_file()
     if sys.platform != "win32":
         assert stat.S_IMODE(config_path.stat().st_mode) == 0o600
-    assert stat.S_IMODE(config_path.parent.stat().st_mode) == 0o700
+        assert stat.S_IMODE(config_path.parent.stat().st_mode) == 0o700
 
     created: list[tuple[str, str]] = []
 

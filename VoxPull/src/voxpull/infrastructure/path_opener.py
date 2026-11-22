@@ -30,7 +30,7 @@ class NativePathOpener:
         if sys.platform == "darwin":
             command = ["open", "-R", str(target)]
         elif sys.platform == "win32":
-            command = ["explorer", "/select,", str(target)]
+            command = ["explorer.exe", "/select,", str(target)]
         else:
             executable = shutil.which("xdg-open")
             if executable is None:
@@ -38,6 +38,11 @@ class NativePathOpener:
             command = [executable, str(target.parent)]
 
         try:
+            if sys.platform == "win32":
+                # Explorer may report exit code 1 after handing the request to
+                # an existing window. Successful process creation is sufficient.
+                subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                return
             result = subprocess.run(
                 command,
                 capture_output=True,

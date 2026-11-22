@@ -1,3 +1,4 @@
+import sys
 import asyncio
 from httpx import ASGITransport, AsyncClient
 
@@ -59,7 +60,8 @@ async def test_records_and_batch_survive_worker_restart(tmp_path):
         assert second.get_batch(batch.id) == batch
         assert second.batch_jobs(batch) == original
         assert all(not job.extract_txt for job in original)
-        assert all(path.stat().st_mode & 0o777 == 0o600 for path in root.glob("*.json"))
+        if sys.platform != "win32":
+            assert all(path.stat().st_mode & 0o777 == 0o600 for path in root.glob("*.json"))
     finally:
         await second.stop()
 

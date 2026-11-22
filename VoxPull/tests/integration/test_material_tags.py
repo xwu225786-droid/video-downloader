@@ -1,3 +1,4 @@
+import sys
 from concurrent.futures import ThreadPoolExecutor
 
 from httpx import ASGITransport, AsyncClient
@@ -57,7 +58,8 @@ def test_parallel_tag_writes_do_not_lose_labels_or_assignments(tmp_path):
         list(pool.map(add, range(24)))
     data = MaterialTagStore(path).read()
     assert len(data["tags"]) == len(data["assignments"]) == 24
-    assert path.stat().st_mode & 0o777 == 0o600
+    if sys.platform != "win32":
+        assert path.stat().st_mode & 0o777 == 0o600
 
 
 async def test_bulk_tags_are_atomic_and_reconfirm_if_labels_change(tmp_path):

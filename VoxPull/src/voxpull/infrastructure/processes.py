@@ -89,11 +89,14 @@ class ProcessRunner:
             # Kill the owned process tree, including FFmpeg/Whisper descendants.
             # terminate() on Windows would kill only the immediate child.
             def terminate_tree() -> None:
-                subprocess.run(
+                result = subprocess.run(
                     ["taskkill.exe", "/PID", str(process.pid), "/T", "/F"],
                     capture_output=True, check=False, timeout=10,
                     creationflags=subprocess.CREATE_NO_WINDOW,
                 )
+                if result.returncode and process.returncode is None:
+                    with contextlib.suppress(ProcessLookupError):
+                        process.kill()
             try:
                 await asyncio.to_thread(terminate_tree)
             except (OSError, subprocess.SubprocessError):
