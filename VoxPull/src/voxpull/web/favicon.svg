@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title desc">
+  <title id="title">视频提取</title>
+  <desc id="desc">蓝色圆角底板上的白色小电视，屏幕中有播放符号。</desc>
+  <rect x="3" y="3" width="122" height="122" rx="29" fill="#3459e6"/>
+  <path d="m43 25 19 15 21-15" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="23" y="40" width="82" height="58" rx="13" fill="#fff"/>
+  <rect x="30" y="47" width="59" height="44" rx="8" fill="#3459e6"/>
+  <path d="m52 57 20 12-20 12Z" fill="#fff"/>
+  <circle cx="97" cy="59" r="3" fill="#3459e6"/>
+  <circle cx="97" cy="72" r="3" fill="#3459e6"/>
+  <path d="m40 99-5 8m53-8 5 8" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round"/>
+</svg>

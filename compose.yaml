@@ -1,0 +1,47 @@
+name: voxpull
+services:
+  app:
+    image: voxpull:local
+    build:
+      context: .
+      args:
+        APP_UID: ${VOXPULL_UID:-1000}
+        APP_GID: ${VOXPULL_GID:-1000}
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${VOXPULL_HTTP_PORT:-18765}:18765"
+      - "127.0.0.1:${VOXPULL_CONSOLE_PORT:-6080}:6080"
+    environment:
+      VOXPULL_DATA_DIR: ${VOXPULL_DATA_PATH:-/data}
+      VOXPULL_BROWSER_DISPLAY_BACKEND: x11
+      VOXPULL_BROWSER_PROFILE_DIR: /home/app/.voxpull-browser
+      VOXPULL_HOST_BRIDGE_DIR: /run/host-bridge
+      VOXPULL_BROWSER_CONSOLE_URL: "http://127.0.0.1:${VOXPULL_CONSOLE_PORT:-6080}/vnc.html?autoconnect=1&resize=scale"
+      VOXPULL_LOG_PATH: ${VOXPULL_DATA_PATH:-/data}/logs/container.log
+      TZ: Asia/Shanghai
+    volumes:
+      - type: bind
+        source: ${VOXPULL_DATA_PATH:-./VoxPull/data}
+        target: ${VOXPULL_DATA_PATH:-/data}
+      - type: bind
+        source: ${VOXPULL_DATA_PATH:-./VoxPull/data}/browser-profile
+        target: ${VOXPULL_DATA_PATH:-/data}/browser-profile
+        read_only: true
+      - type: bind
+        source: ./VoxPull/models
+        target: /models
+        read_only: true
+      - type: bind
+        source: ${VOXPULL_BRIDGE_PATH:-./.local-tools/state/docker-bridge}
+        target: /run/host-bridge
+      - type: volume
+        source: browser-profile
+        target: /home/app/.voxpull-browser
+    shm_size: 512mb
+    mem_limit: 3g
+    cpus: 4
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    stop_grace_period: 30s
+volumes:
+  browser-profile:

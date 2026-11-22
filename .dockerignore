@@ -1,0 +1,12 @@
+**
+!Dockerfile
+!docker/
+!docker/**
+!VoxPull/
+!VoxPull/pyproject.toml
+!VoxPull/README.md
+!VoxPull/LICENSE
+!VoxPull/src/
+!VoxPull/src/**
+**/__pycache__
+**/*.pyc

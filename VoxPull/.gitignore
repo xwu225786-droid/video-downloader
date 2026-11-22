@@ -1,0 +1,56 @@
+# Operating-system and editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Python bytecode, environments, and tool caches
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+.uv-cache/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.pyright/
+.hypothesis/
+.tox/
+.nox/
+
+# Test and coverage output
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+playwright-report/
+test-results/
+
+# Packaging output
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Local configuration, credentials, logs, and process state
+.env
+.env.*
+!.env.example
+*.log
+*.pid
+*.pem
+*.key
+
+# Local design-review artifacts
+.design-qa/
+
+# Runtime data and downloaded models contain large or sensitive files.
+data/
+models/
+
+.workbuddy

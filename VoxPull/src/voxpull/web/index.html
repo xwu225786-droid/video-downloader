@@ -1,0 +1,744 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <meta name="color-scheme" content="light dark"/>
+    <meta name="theme-color" content="#eef3f8" media="(prefers-color-scheme: light)"/>
+    <meta name="theme-color" content="#0e1726" media="(prefers-color-scheme: dark)"/>
+    <title>素材保存与视频转写</title>
+    <link rel="icon" href="/static/favicon.svg?v=20261122-tv" type="image/svg+xml"/>
+    <link rel="stylesheet" href="/static/styles.css?v=20261122-card-labels-gray-square"/>
+</head>
+<body>
+<a class="skip-link" href="#main-content">跳到主要内容</a>
+<div class="page-shell">
+    <dialog id="settings-dialog" class="settings-dialog" aria-labelledby="settings-title">
+        <header class="settings-header">
+            <h2 id="settings-title">设置</h2>
+            <button id="settings-close" class="summary-config-close" type="button" aria-label="关闭设置" autofocus>×</button>
+        </header>
+
+        <section class="system-panel" aria-labelledby="system-title">
+            <div class="settings-section-heading">
+                <h3 id="system-title">运行状态</h3>
+            </div>
+
+            <div id="system-summary" class="system-summary is-loading" aria-live="polite">
+                <span class="status-dot" aria-hidden="true"></span>
+                <div>
+                    <strong id="system-summary-title">正在检测</strong>
+                    <p id="system-summary-copy">正在检查本机运行环境…</p>
+                </div>
+            </div>
+
+            <div class="settings-details">
+                <details class="system-details">
+                    <summary>查看依赖详情</summary>
+                    <div id="system-grid" class="system-grid" role="list" aria-live="polite">
+                        <div class="system-loading">正在检测本机环境…</div>
+                    </div>
+                </details>
+
+                <button id="refresh-system" class="button button-ghost sidebar-button" type="button">
+                    重新检测
+                </button>
+
+                <div class="auth-block">
+                    <div class="auth-heading">
+                        <div class="auth-title">
+                            <strong>抖音 Cookie</strong>
+                            <span class="cookie-help">
+                                <button
+                                        class="cookie-help-trigger"
+                                        type="button"
+                                        aria-label="为什么需要抖音 Cookie"
+                                        aria-describedby="cookie-help-tooltip"
+                                >?</button>
+                                <span id="cookie-help-tooltip" class="cookie-help-tooltip" role="tooltip">
+                                    <strong>为什么需要？</strong>
+                                    <span>抖音会校验登录状态。Cookie 让本应用能读取受登录保护的作品信息和媒体文件；凭据只保存在本机。</span>
+                                </span>
+                            </span>
+                        </div>
+                        <span id="auth-state" class="auth-state is-loading" aria-live="polite">
+                  <span class="status-dot" aria-hidden="true"></span>
+                  <span id="auth-state-label">检测中</span>
+                </span>
+                    </div>
+                    <p id="auth-hint" aria-live="polite">请在抖音登陆与验证窗口完成登录，登录状态会自动保存。</p>
+                    <div class="button-row auth-actions douyin-auth-actions">
+                        <button id="auth-start" class="button button-secondary" type="button">
+                            抖音登陆与验证窗口
+                        </button>
+                        <button id="auth-complete" class="button button-primary hidden" type="button">
+                            手动检查并保存
+                        </button>
+                    </div>
+                </div>
+
+                <div class="auth-block summary-service-block">
+                    <div class="auth-heading">
+                        <div class="auth-title">
+                            <strong>AI 配置</strong>
+                            <span class="cookie-help">
+                                <button
+                                        class="cookie-help-trigger"
+                                        type="button"
+                                        aria-label="关于 AI 总结的数据流向"
+                                        aria-describedby="summary-help-tooltip"
+                                >?</button>
+                                <span id="summary-help-tooltip" class="cookie-help-tooltip" role="tooltip">
+                                    <strong>文案会离开本机吗？</strong>
+                                    <span>会。AI 总结调用你配置的 OpenAI 兼容接口，转写文案将发送到该服务；接口凭据只保存在本机浏览器中。</span>
+                                </span>
+                            </span>
+                        </div>
+                        <span id="summary-state" class="auth-state has-error" aria-live="polite">
+                            <span class="status-dot" aria-hidden="true"></span>
+                            <span id="summary-state-label">未配置</span>
+                        </span>
+                    </div>
+                    <p id="summary-hint" aria-live="polite">配置 OpenAI 兼容接口后，可在结果页生成视频内容总结。</p>
+                    <div class="button-row auth-actions">
+                        <button id="summary-config-open" class="button button-secondary" type="button">
+                            配置接口
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <details class="feishu-settings" id="feishu-settings">
+            <summary>飞书机器人 <span id="feishu-state" aria-live="polite">未启用</span></summary>
+            <p id="feishu-hint" aria-live="polite">未启用，配置后可接收飞书链接。</p>
+            <form id="feishu-form" autocomplete="off">
+                <label>App ID <input id="feishu-app-id" maxlength="128" placeholder="cli_…" autocomplete="off"/></label>
+                <label>App Secret <input id="feishu-app-secret" type="password" maxlength="512" placeholder="填写应用凭证" autocomplete="new-password"/></label>
+                <label>允许私聊的用户 Open ID <textarea id="feishu-users" rows="2" maxlength="14000" placeholder="ou_…，多个ID用逗号或换行分隔"></textarea></label>
+                <label>允许接收链接的群 Chat ID <textarea id="feishu-chats" rows="2" maxlength="14000" placeholder="oc_…，留空则不接收群消息"></textarea></label>
+                <div class="feishu-options">
+                    <label><input id="feishu-enabled" type="checkbox"/> 启用飞书接入</label>
+                    <label><input id="feishu-mention" type="checkbox" checked/> 群聊需要 @机器人</label>
+                    <label><input id="feishu-transcript" type="checkbox"/> 同时提取字幕并发送文案 TXT</label>
+                    <label>识别语言 <select id="feishu-language"><option value="zh">中文</option><option value="auto">自动判断</option></select></label>
+                </div>
+                <p class="feishu-note">仅处理允许用户的私聊或允许群的消息；允许列表留空时，只连接、不创建任务。首次连接后发送一条消息，可在下方查看用户和会话ID。视频保留在本机，处理结果会上传到飞书并回复原会话。</p>
+                <div class="button-row wrap feishu-actions">
+                    <button class="button button-ghost" id="feishu-clear" type="button">清除配置</button>
+                    <button class="button button-ghost" id="feishu-test" type="button">测试连接</button>
+                    <button class="button button-primary" id="feishu-save" type="submit">保存配置</button>
+                </div>
+            </form>
+            <p id="feishu-feedback" role="status"></p>
+            <div id="feishu-deliveries" class="feishu-deliveries"></div>
+        </details>
+
+        <div class="privacy-mark" title="下载和转写在本机处理；启用飞书回传或AI总结时会发送相关内容">
+            <span class="privacy-dot" aria-hidden="true"></span>
+            本机下载与转写
+        </div>
+    </dialog>
+
+    <main id="main-content" class="workspace">
+        <header class="task-intro">
+            <div class="task-intro-copy">
+                <h1>粘贴链接，<span>收好素材</span></h1>
+            </div>
+            <div class="page-toolbar">
+                <button id="settings-open" class="button button-ghost settings-button" type="button" aria-haspopup="dialog" aria-controls="settings-dialog" aria-expanded="false">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="m9.5 3-.7 2.1-2 .9-2-.5-2.5 4.3L3.8 11v2l-1.5 1.2L4.8 18l2-.4 2 .9.7 2.5h5l.7-2.5 2-.9 2 .4 2.5-3.8L20.2 13v-2l1.5-1.2-2.5-4.3-2 .5-2-.9L14.5 3z"/>
+                        <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                    <span>设置</span>
+                </button>
+            </div>
+            <div class="signal-chain-block">
+                <p>本机处理路径</p>
+                <ol class="signal-chain" aria-label="媒体处理流程">
+                    <li><span aria-hidden="true"></span><strong>识别类型</strong></li>
+                    <li><span aria-hidden="true"></span><strong>保存原文件</strong></li>
+                    <li><span aria-hidden="true"></span><strong>视频转写</strong></li>
+                </ol>
+            </div>
+        </header>
+
+        <section class="task-panel" aria-labelledby="input-title">
+            <h2 id="input-title" class="visually-hidden">创建提取任务</h2>
+            <div class="task-input-toolbar">
+                <div class="input-mode-switch" role="group" aria-label="处理模式">
+                    <button id="mode-single" class="mode-button is-active" type="button" aria-pressed="true">单条处理</button>
+                    <button id="mode-batch" class="mode-button" type="button" aria-pressed="false">批量处理</button>
+                </div>
+                <button id="submit-job" class="button button-primary submit-button" type="submit" form="job-form">
+                    <span class="button-spinner" aria-hidden="true"></span>
+                    <span id="submit-job-label">开始处理</span>
+                </button>
+            </div>
+            <form id="job-form" novalidate>
+                <div class="field-heading">
+                    <label id="share-content-label" for="share-content">输入分享内容或链接</label>
+                    <span id="input-mode-hint">支持视频、图片与 Live 图</span>
+                </div>
+                <textarea
+                        id="share-content"
+                        name="content"
+                        maxlength="4096"
+                        autocomplete="off"
+                        autocapitalize="off"
+                        spellcheck="false"
+                        required
+                        aria-describedby="share-content-error share-paste-status"
+                        aria-invalid="false"
+                        placeholder="例如：粘贴抖音/小红书/Bilibili分享文案或链接..."
+                ></textarea>
+                <p id="share-content-error" class="input-error hidden" role="alert"></p>
+                <p id="share-paste-status" class="share-paste-status hidden" role="status" aria-live="polite"></p>
+
+                <div id="batch-input-tools" class="batch-input-tools hidden">
+                    <button id="import-batch-links" class="button button-ghost" type="button">导入 TXT</button>
+                    <input id="batch-links-file" type="file" accept=".txt,text/plain" hidden/>
+                    <span id="batch-link-count" aria-live="polite">粘贴多个链接，重复链接会自动去重</span>
+                </div>
+
+                <div class="task-settings" aria-label="任务设置">
+                    <div class="setting-card save-video-setting">
+                        <div class="setting-copy">
+                            <div class="setting-title-row">
+                                <span class="setting-label">保留下载的视频</span>
+                            </div>
+                        </div>
+                        <button
+                                id="save-video-toggle"
+                                class="toggle-button"
+                                type="button"
+                                role="switch"
+                                aria-checked="false"
+                                aria-label="保留下载的视频"
+                        ><span aria-hidden="true"></span></button>
+                    </div>
+
+                    <div class="setting-card language-setting">
+                        <div class="extract-txt-row">
+                            <div class="extract-txt-options">
+                                <span class="setting-label">提取字幕</span>
+                                <div class="select-shell">
+                                    <select id="language" name="language" autocomplete="off" aria-label="视频文案识别语言" aria-describedby="language-hint">
+                                        <option value="zh" selected>中文</option>
+                                        <option value="auto">自动判断</option>
+                                    </select>
+                                    <span class="select-chevron" aria-hidden="true"></span>
+                                </div>
+                            </div>
+                            <button id="extract-txt-toggle" class="toggle-button" type="button" role="switch" aria-checked="true" aria-label="提取视频字幕"><span aria-hidden="true"></span></button>
+                        </div>
+                        <span id="language-hint" class="visually-hidden">语言不确定时请选择自动判断</span>
+                    </div>
+
+                    <div class="setting-card auto-summary-setting">
+                        <div class="setting-copy">
+                            <div class="setting-title-row">
+                                <span class="setting-label">AI 总结</span>
+                            </div>
+                        </div>
+                        <button
+                                id="auto-summary-toggle"
+                                class="toggle-button"
+                                type="button"
+                                role="switch"
+                                aria-checked="false"
+                                aria-label="转写完成后自动生成 AI 总结"
+                        ><span aria-hidden="true"></span></button>
+                    </div>
+
+                    <div id="storage-path-card" class="setting-card storage-setting">
+                        <div class="storage-heading">
+                            <span id="storage-path-label" class="setting-label">本机保存位置</span>
+                            <button
+                                    id="storage-change"
+                                    class="storage-change-button"
+                                    type="button"
+                                    aria-describedby="storage-path-feedback"
+                            >更改位置</button>
+                        </div>
+                        <div class="storage-path-list">
+                            <code id="video-storage-path" aria-busy="true" translate="no">视频：正在获取…</code>
+                            <code id="image-storage-path" aria-busy="true" translate="no">图片：正在获取…</code>
+                        </div>
+                        <p id="storage-path-feedback" class="storage-path-feedback" role="status"></p>
+                    </div>
+                </div>
+
+            </form>
+        </section>
+
+        <section id="batch-panel" class="panel batch-panel hidden" aria-labelledby="batch-title">
+            <div class="panel-heading">
+                <div>
+                    <h2 id="batch-title" tabindex="-1">处理队列</h2>
+                    <p id="queue-status-error" class="batch-help queue-feedback" role="alert"></p>
+                </div>
+                <div class="batch-actions">
+                    <button id="batch-retry" class="button button-secondary hidden" type="button">重试失败或暂停项</button>
+                </div>
+            </div>
+            <p id="queue-feedback" class="batch-help queue-feedback" role="status" aria-live="polite"></p>
+            <div class="queue-filters">
+                <div class="queue-search-bar" role="search" aria-label="素材搜索">
+                    <label for="queue-search">搜索素材</label>
+                    <div class="queue-search-controls">
+                        <input id="queue-search" type="search" maxlength="500" placeholder="搜索标题、文案或 TXT 中的关键词" autocomplete="off" aria-controls="batch-list"/>
+                        <button id="queue-search-submit" class="button button-ghost" type="button" disabled>搜索</button>
+                        <button id="queue-search-clear" class="button button-ghost" type="button" disabled>清空</button>
+                    </div>
+                </div>
+                <div class="queue-tag-filter-bar">
+                    <label id="queue-tag-filter-title" for="queue-tag-filter">标签筛选</label>
+                    <div id="queue-tag-picker" class="queue-tag-picker">
+                        <button id="queue-tag-filter" class="queue-tag-filter-trigger" type="button" aria-labelledby="queue-tag-filter-title queue-tag-filter-label" aria-controls="queue-tag-filter-menu" aria-expanded="false" disabled>
+                            <span id="queue-tag-filter-label">全部素材</span>
+                            <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg>
+                        </button>
+                        <div id="queue-tag-filter-menu" class="queue-tag-filter-menu hidden" role="group" aria-label="标签筛选选项"></div>
+                    </div>
+                </div>
+            </div>
+            <p id="queue-search-status" class="queue-search-status hidden" role="status" aria-live="polite"></p>
+            <div class="queue-filter-feedback">
+                <span id="queue-tag-status" role="status" aria-live="polite">正在读取标签…</span>
+                <button id="queue-tag-reload" class="button button-ghost hidden" type="button">重试</button>
+            </div>
+            <div class="queue-selection-toolbar">
+                <button id="queue-select-start" class="button button-ghost queue-selection-toggle" type="button" aria-controls="batch-list" aria-pressed="false">选择</button>
+                <label class="queue-select-page hidden"><input id="queue-select-page" type="checkbox" aria-controls="batch-list"/>本页全选</label>
+                <span id="queue-selection-count" class="hidden" role="status" aria-live="polite">已选 0 条</span>
+                <button id="queue-select-cancel" class="button button-ghost queue-selection-toggle hidden" type="button">取消选择</button>
+                <div id="queue-selection-actions" class="queue-selection-actions hidden">
+                    <button id="queue-add-tags" class="button button-ghost hidden" type="button" aria-haspopup="dialog" aria-controls="material-tag-dialog" disabled>添加标签</button>
+                    <button id="batch-download" class="button button-ghost queue-archive hidden" type="button" disabled>打包文案与封面</button>
+                    <button id="queue-delete" class="button button-ghost hidden" type="button" disabled>删除选中</button>
+                </div>
+            </div>
+            <p id="queue-filter-empty" class="batch-help hidden" role="status">没有符合此标签的素材</p>
+            <ol id="batch-list" class="batch-list" aria-label="处理任务列表"></ol>
+            <nav id="batch-pagination" class="batch-pagination hidden" aria-label="处理队列分页">
+                <p id="batch-page-info" class="batch-page-info" role="status" aria-live="polite" aria-atomic="true"></p>
+                <div class="batch-page-controls">
+                    <button id="batch-page-previous" class="button button-ghost" type="button" aria-controls="batch-list">上一页</button>
+                    <div id="batch-page-numbers" class="batch-page-numbers" role="group" aria-label="页码"></div>
+                    <button id="batch-page-next" class="button button-ghost" type="button" aria-controls="batch-list">下一页</button>
+                </div>
+            </nav>
+        </section>
+
+        <section id="result-panel" class="panel result-panel hidden" aria-labelledby="result-title">
+            <div class="panel-heading result-heading">
+                <div class="result-summary">
+                    <p class="section-kicker">04 · 结果</p>
+                    <div class="result-title-line">
+                        <h2 id="result-title" tabindex="-1">处理完成</h2>
+                        <span id="result-type-badge" class="result-type-badge"></span>
+                    </div>
+                    <p id="media-meta" class="result-meta"></p>
+                </div>
+                <div id="transcript-actions" class="result-actions" aria-label="转写结果操作">
+                    <button id="copy-text" class="button button-ghost result-copy-action" type="button">
+                        <span class="copy-label" aria-live="polite">复制文案</span>
+                    </button>
+                    <div class="result-downloads">
+                        <span class="result-downloads-label">下载为</span>
+                        <div class="result-download-group" role="group" aria-label="下载识别结果">
+                            <button id="download-text" class="result-download-button" type="button">TXT</button>
+                            <button id="download-timeline" class="result-download-button" type="button">时间轴 TXT
+                            </button>
+                            <button id="download-srt" class="result-download-button" type="button">SRT</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="media-path" class="result-file"></div>
+
+            <section id="video-details" class="video-details hidden" aria-labelledby="video-original-title">
+                <img id="video-cover" class="video-cover" alt="视频第一帧封面"/>
+                <div class="video-details-copy">
+                    <p class="video-details-label">视频标题</p>
+                    <h3 id="video-original-title"></h3>
+                    <div class="video-details-actions">
+                        <button id="copy-title" class="button button-secondary" type="button">复制标题</button>
+                        <a id="download-cover" class="button button-ghost" download>下载封面</a>
+                        <a id="download-title" class="button button-ghost" download>标题 TXT</a>
+                    </div>
+                    <p class="video-details-note">封面取自视频第一帧，封面和标题会单独保存在本机。</p>
+                    <p id="video-details-path" class="video-details-path"></p>
+                </div>
+            </section>
+
+            <section id="batch-video-preview" class="batch-video-preview hidden" aria-label="视频播放预览">
+                <video id="batch-video-player" controls playsinline preload="metadata" aria-label="本地视频预览"></video>
+                <p id="batch-video-unavailable" class="batch-video-unavailable hidden">此任务未保留视频，无法本地预览。逐字稿仍可正常查看。</p>
+                <p id="batch-video-error" class="batch-video-unavailable hidden" role="status">视频暂时无法播放，请确认本地文件仍在原位置，或尝试在本机播放器中打开。</p>
+            </section>
+
+            <div id="image-result" class="image-result hidden">
+                <div class="contact-sheet-heading">
+                    <p id="image-result-note"></p>
+                </div>
+                <div id="image-grid" class="media-contact-sheet" aria-label="图片预览"></div>
+                <p id="live-photo-note" class="live-photo-note hidden">
+                    <span class="live-pulse" aria-hidden="true"></span>
+                    每张 Live 图同时保存静态图片和同编号的动态 MP4。
+                </p>
+            </div>
+
+            <div id="batch-file-actions" class="batch-file-actions hidden" aria-label="作品操作"></div>
+
+            <div id="video-result">
+                <div class="result-view-toolbar">
+                <div class="view-tabs" role="tablist" aria-label="转写结果视图">
+                    <button id="view-tab-text" class="view-tab active" data-view="text" type="button" role="tab"
+                            aria-selected="true" aria-controls="result-view-panel">纯文本
+                    </button>
+                    <button id="view-tab-combined" class="view-tab" data-view="combined" type="button" role="tab"
+                            aria-selected="false" aria-controls="result-view-panel" tabindex="-1">文本 + 时间轴
+                    </button>
+                    <button id="view-tab-timeline" class="view-tab" data-view="timeline" type="button" role="tab"
+                            aria-selected="false" aria-controls="result-view-panel" tabindex="-1">时间轴
+                    </button>
+                    <button id="view-tab-summary" class="view-tab" data-view="summary" type="button" role="tab"
+                            aria-selected="false" aria-controls="result-view-panel" tabindex="-1">AI 总结
+                    </button>
+                </div>
+                </div>
+
+                <div id="result-view-panel" role="tabpanel" aria-labelledby="view-tab-text">
+                    <div id="text-view" class="result-view">
+                        <div id="transcript-empty" class="content-empty-state hidden">
+                            <button id="transcript-generate" class="button button-primary card-extract-transcript" type="button">提取字幕</button>
+                            <p id="transcript-empty-note"></p>
+                        </div>
+                        <div class="transcript-editor-frame">
+                            <textarea id="transcript-editor" class="transcript-editor" name="transcript" autocomplete="off" aria-label="视频逐字稿，可编辑"></textarea>
+                            <button id="batch-read-open" class="transcript-expand hidden" type="button" aria-label="放大文本框" title="放大文本框">
+                                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                    <path d="M15 3h6v6M21 3l-7 7M9 21H3v-6M3 21l7-7"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <p id="transcript-action-feedback" class="card-action-feedback" role="status"></p>
+                        <p id="batch-text-hint" class="batch-text-hint hidden"></p>
+                        <div id="transcript-bottom-actions" class="transcript-bottom-actions">
+                            <button id="transcript-regenerate" class="button button-ghost card-extract-transcript" type="button">重新提取字幕</button>
+                            <div id="transcript-text-actions" class="transcript-text-actions"></div>
+                        </div>
+                    </div>
+                    <div id="timeline-view" class="result-view timeline-view hidden"></div>
+                    <div id="summary-view" class="result-view summary-view hidden">
+                        <div id="summary-empty" class="summary-state summary-empty">
+                            <h3>还没有这条作品的总结</h3>
+                            <p>基于当前卡片文案生成；校对修改文案后可重新生成。</p>
+                            <button id="summary-generate" class="button button-primary" type="button">生成AI总结</button>
+                            <p class="summary-privacy">
+                                <span class="privacy-dot" aria-hidden="true"></span>文案将发送至所配置的接口服务，接口凭据只保存在本机
+                            </p>
+                        </div>
+                        <div id="summary-progress" class="summary-state hidden" aria-live="polite">
+                            <div class="summary-progress-line">
+                                <span class="status-dot" aria-hidden="true"></span>
+                                <p>正在生成总结</p>
+                                <button id="summary-cancel" class="button button-ghost" type="button">取消</button>
+                            </div>
+                            <div class="summary-skeleton" aria-hidden="true">
+                                <span style="width: 34%"></span>
+                                <span style="width: 96%"></span>
+                                <span style="width: 88%"></span>
+                                <span style="width: 26%"></span>
+                                <span style="width: 92%"></span>
+                                <span style="width: 74%"></span>
+                                <span style="width: 58%"></span>
+                            </div>
+                        </div>
+                        <div id="summary-result" class="summary-state hidden">
+                            <article id="summary-markdown" class="summary-markdown"></article>
+                            <div class="summary-footer">
+                                <button id="summary-copy" class="button button-primary result-copy-action"
+                                        type="button">
+                                    <span class="copy-label" aria-live="polite">复制总结</span>
+                                </button>
+                                <button id="summary-download" class="button button-ghost" type="button">下载 Markdown
+                                </button>
+                                <button id="summary-regenerate" class="button button-ghost" type="button">重新生成
+                                </button>
+                                <p id="summary-meta" class="summary-meta"></p>
+                            </div>
+                        </div>
+                        <div id="summary-error" class="summary-state hidden">
+                            <div class="error-box" role="alert">
+                                <p id="summary-error-text"></p>
+                                <button id="summary-retry" class="button button-ghost" type="button">重试</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+    </main>
+</div>
+
+<dialog
+        id="image-viewer"
+        class="image-viewer"
+        tabindex="-1"
+        aria-labelledby="image-viewer-title"
+        aria-describedby="image-viewer-help"
+>
+    <div class="image-viewer-shell">
+        <header class="image-viewer-header">
+            <div class="image-viewer-heading">
+                <h2 id="image-viewer-title">图片预览</h2>
+            </div>
+            <p id="image-viewer-counter" class="image-viewer-counter" aria-live="polite"></p>
+            <button id="image-viewer-close" class="image-viewer-close" type="button">
+                <span aria-hidden="true">×</span>
+                <span>关闭</span>
+            </button>
+        </header>
+
+        <div id="image-viewer-canvas" class="image-viewer-canvas">
+            <button
+                    id="image-viewer-previous"
+                    class="image-viewer-navigation image-viewer-previous"
+                    type="button"
+                    aria-label="上一张图片"
+            ><span aria-hidden="true">‹</span></button>
+            <div class="image-viewer-media">
+                <img id="image-viewer-image" alt="" draggable="false"/>
+                <video
+                        id="image-viewer-video"
+                        class="hidden"
+                        playsinline
+                        preload="metadata"
+                        aria-label="Live 图动态画面"
+                ></video>
+                <button
+                        id="image-viewer-live-replay"
+                        class="image-viewer-live-replay hidden"
+                        type="button"
+                        aria-label="播放 Live 图"
+                ><span aria-hidden="true"></span>LIVE</button>
+                <p id="image-viewer-error" class="image-viewer-error hidden" role="status">图片预览不可用</p>
+            </div>
+            <button
+                    id="image-viewer-next"
+                    class="image-viewer-navigation image-viewer-next"
+                    type="button"
+                    aria-label="下一张图片"
+            ><span aria-hidden="true">›</span></button>
+        </div>
+
+        <footer class="image-viewer-footer">
+            <div class="image-viewer-media-controls">
+                <code id="image-viewer-filename" class="image-viewer-footer-filename" translate="no"></code>
+                <div class="image-viewer-zoom" role="group" aria-label="图片缩放">
+                    <button id="image-viewer-zoom-out" type="button" aria-label="缩小图片">−</button>
+                    <output id="image-viewer-zoom-value" aria-live="polite">100%</output>
+                    <button id="image-viewer-zoom-in" type="button" aria-label="放大图片">＋</button>
+                    <button id="image-viewer-zoom-reset" class="image-viewer-reset" type="button">还原</button>
+                </div>
+            </div>
+            <p id="image-viewer-help" class="image-viewer-help">滚轮或双指缩放 · 放大后拖动查看</p>
+        </footer>
+    </div>
+</dialog>
+
+<dialog
+        id="summary-config-dialog"
+        class="summary-config"
+        aria-labelledby="summary-config-title"
+>
+    <form id="summary-config-form" novalidate>
+        <header class="summary-config-header">
+            <h2 id="summary-config-title">配置总结接口</h2>
+            <button id="summary-config-close" class="summary-config-close" type="button" aria-label="关闭配置窗口">
+                <span aria-hidden="true">×</span>
+            </button>
+        </header>
+        <p class="summary-config-copy">
+            支持 OpenAI 兼容接口。生成总结时，转写文案将发送到所选服务；凭据仅保存在本机浏览器。
+        </p>
+        <div class="summary-config-field">
+            <div class="summary-config-label-row">
+                <label for="summary-config-base">接口地址</label>
+                <div class="summary-config-presets" role="group" aria-label="常用接口预设">
+                    <button type="button" class="summary-preset" data-base-url="https://api.deepseek.com">DeepSeek</button>
+                    <button type="button" class="summary-preset" data-base-url="https://api.openai.com/v1">OpenAI</button>
+                    <button type="button" class="summary-preset" data-base-url="https://dashscope.aliyuncs.com/compatible-mode/v1">通义千问</button>
+                    <button type="button" class="summary-preset" data-base-url="https://open.bigmodel.cn/api/paas/v4">智谱 AI</button>
+                </div>
+            </div>
+            <input
+                    id="summary-config-base"
+                    name="base_url"
+                    type="url"
+                    placeholder="https://api.deepseek.com"
+                    autocomplete="off"
+                    spellcheck="false"
+            />
+        </div>
+        <div class="summary-config-field">
+            <label for="summary-config-key">API Key</label>
+            <div class="summary-config-key-wrap">
+                <input
+                        id="summary-config-key"
+                        name="api_key"
+                        type="password"
+                        placeholder="sk-..."
+                        autocomplete="off"
+                />
+                <button
+                        id="summary-config-key-toggle"
+                        type="button"
+                        aria-pressed="false"
+                        aria-label="显示 API Key"
+                >显示</button>
+            </div>
+        </div>
+        <div class="summary-config-field">
+            <label id="summary-config-model-label" for="summary-config-model-trigger">模型</label>
+            <div class="summary-config-select-wrap">
+                <select
+                        id="summary-config-model"
+                        name="model"
+                        hidden
+                        aria-hidden="true"
+                        tabindex="-1"
+                        disabled
+                >
+                    <option value="">请先填写接口地址和 API Key</option>
+                </select>
+                <button
+                        id="summary-config-model-trigger"
+                        class="summary-config-model-trigger"
+                        type="button"
+                        aria-haspopup="listbox"
+                        aria-expanded="false"
+                        aria-controls="summary-config-model-list"
+                        aria-labelledby="summary-config-model-label summary-config-model-value"
+                        aria-describedby="summary-config-model-status"
+                        disabled
+                >
+                    <span class="summary-model-indicator" aria-hidden="true"></span>
+                    <span id="summary-config-model-value" class="summary-config-model-value">请先获取模型</span>
+                    <span class="summary-model-chevron" aria-hidden="true"></span>
+                </button>
+                <div
+                        id="summary-config-model-list"
+                        class="summary-config-model-list hidden"
+                        role="listbox"
+                        aria-labelledby="summary-config-model-label"
+                ></div>
+            </div>
+            <p id="summary-config-model-status" class="summary-config-model-status" data-state="idle" aria-live="polite">
+                <span class="summary-status-dot" aria-hidden="true"></span>
+                <span class="summary-status-text">填写接口地址和 API Key 后，将自动获取可用模型。</span>
+            </p>
+        </div>
+        <p id="summary-config-error" class="input-error hidden" role="alert"></p>
+        <div class="summary-config-actions">
+            <button id="summary-config-clear" class="button button-ghost" type="button">清除配置</button>
+            <button id="summary-config-save" class="button button-primary" type="submit">保存</button>
+        </div>
+    </form>
+</dialog>
+
+<dialog id="material-tag-dialog" class="material-tag-dialog" aria-labelledby="material-tag-title">
+    <form id="material-tag-form">
+        <div class="material-tag-heading">
+            <h2 id="material-tag-title">素材标签</h2>
+            <button id="material-tag-close" class="summary-config-close" type="button" aria-label="关闭素材标签">×</button>
+        </div>
+        <p id="material-tag-subtitle" class="material-tag-subtitle"></p>
+        <div id="material-tag-options" class="material-tag-options" aria-label="选择标签"></div>
+        <button id="material-tag-add" class="material-tag-option material-tag-add" type="button" aria-label="新建标签" title="新建标签" aria-expanded="false" aria-controls="material-tag-create-panel">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+        </button>
+        <div id="material-tag-create-panel" class="material-tag-create hidden">
+            <input id="material-tag-name" type="text" maxlength="40" placeholder="输入标签名称" aria-label="新标签名称" autocomplete="off"/>
+            <button id="material-tag-create" class="button button-ghost" type="button">添加</button>
+            <button id="material-tag-create-cancel" class="button button-ghost" type="button" aria-label="取消新建标签">×</button>
+        </div>
+        <section id="material-tag-overwrite" class="material-tag-overwrite hidden" aria-labelledby="material-tag-overwrite-title">
+            <h3 id="material-tag-overwrite-title">是否覆盖已有标签？</h3>
+            <p id="material-tag-overwrite-message"></p>
+            <ul id="material-tag-overwrite-list"></ul>
+        </section>
+        <p id="material-tag-error" class="material-tag-error" role="alert"></p>
+        <div class="material-tag-actions">
+            <button id="material-tag-cancel" class="button button-ghost" type="button">取消</button>
+            <button id="material-tag-save" class="button button-primary" type="submit">保存标签</button>
+            <button id="material-tag-confirm" class="button button-primary hidden" type="button">确认覆盖</button>
+        </div>
+    </form>
+</dialog>
+
+<dialog id="material-tag-delete-dialog" class="queue-delete-dialog" aria-labelledby="material-tag-delete-title" aria-describedby="material-tag-delete-message">
+    <h2 id="material-tag-delete-title">删除标签</h2>
+    <p id="material-tag-delete-message"></p>
+    <p id="material-tag-delete-error" class="queue-delete-error" role="alert"></p>
+    <div class="queue-delete-actions">
+        <button id="material-tag-delete-cancel" class="button button-ghost" type="button">取消</button>
+        <button id="material-tag-delete-confirm" class="button button-secondary" type="button">确认删除</button>
+    </div>
+</dialog>
+
+<dialog id="batch-reader" class="batch-reader" aria-labelledby="batch-reader-title">
+    <header class="batch-reader-heading">
+        <div class="batch-reader-heading-copy">
+            <p class="batch-reader-label">逐字稿 · 放大编辑</p>
+            <h2 id="batch-reader-title"></h2>
+            <p id="batch-reader-meta" class="batch-reader-meta"></p>
+        </div>
+    </header>
+    <div class="batch-reader-actions">
+        <button id="batch-reader-copy" class="button button-primary" type="button">复制全文</button>
+        <button id="batch-reader-download" class="button button-ghost hidden" type="button">下载 TXT</button>
+        <span id="batch-reader-feedback" role="status" aria-live="polite"></span>
+    </div>
+    <div class="batch-reader-editor-frame">
+        <textarea id="batch-reader-text" class="batch-reader-text" aria-label="完整逐字稿，可编辑" placeholder="暂无识别文本" autocomplete="off" autofocus></textarea>
+        <button id="batch-reader-close" class="transcript-expand" type="button" aria-label="收起文本框" title="收起文本框">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M21 3l-7 7M14 4v6h6M3 21l7-7M4 14h6v6"/>
+            </svg>
+        </button>
+    </div>
+</dialog>
+
+<dialog id="card-regenerate-dialog" class="queue-delete-dialog" aria-labelledby="card-regenerate-title" aria-describedby="card-regenerate-message">
+    <h2 id="card-regenerate-title"></h2>
+    <p id="card-regenerate-message"></p>
+    <form method="dialog" class="queue-delete-actions">
+        <button class="button button-ghost" value="cancel" autofocus>取消</button>
+        <button class="button button-primary" value="regenerate">重新生成</button>
+    </form>
+</dialog>
+
+<dialog id="queue-delete-dialog" class="queue-delete-dialog" aria-labelledby="queue-delete-title" aria-describedby="queue-delete-count">
+    <h2 id="queue-delete-title">删除任务</h2>
+    <p id="queue-delete-count"></p>
+    <p class="queue-delete-hint">默认仅从处理队列移除记录，保留本地文件。</p>
+    <label class="queue-delete-option"><input id="queue-delete-files" type="checkbox"/>同时删除本地源文件</label>
+    <p class="queue-delete-hint">包括已保存的视频、图片、封面和标题文件；文件删除后无法撤销。仍被其他任务使用的文件会保留。</p>
+    <p id="queue-delete-error" class="queue-delete-error" role="alert"></p>
+    <div class="queue-delete-actions">
+        <button id="queue-delete-cancel" class="button button-ghost" type="button">取消</button>
+        <button id="queue-delete-confirm" class="button button-secondary" type="button">删除</button>
+    </div>
+</dialog>
+
+<script src="/static/app.js?v=20261122-card-labels-top" defer></script>
+<script src="/static/feishu.js?v=20261108-1" defer></script>
+</body>
+</html>
