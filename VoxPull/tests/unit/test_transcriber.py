@@ -1,4 +1,5 @@
 import json
+import sys
 from pathlib import Path
 
 import pytest
@@ -23,7 +24,10 @@ def test_parses_whisper_json() -> None:
     assert transcript.segments[1].start_ms == 1200
 
 
-async def test_transcriber_enables_vad_and_limits_text_context(tmp_path: Path) -> None:
+@pytest.mark.parametrize("platform", ["darwin", "win32"])
+async def test_transcriber_enables_vad_and_limits_text_context(tmp_path: Path, monkeypatch, platform) -> None:
+    from voxpull.infrastructure import transcriber
+    monkeypatch.setattr(transcriber.sys, "platform", platform)
     binary = tmp_path / "whisper-cli"
     model = tmp_path / "whisper.bin"
     vad_model = tmp_path / "vad.bin"
@@ -34,9 +38,15 @@ async def test_transcriber_enables_vad_and_limits_text_context(tmp_path: Path) -
     class RecordingRunner:
         command: tuple[str, ...] = ()
 
-        async def run(self, args, *, timeout, on_stderr_line=None) -> ProcessResult:
+        async def run(self, args, *, timeout, on_stderr_line=None, cwd=None) -> ProcessResult:
             self.command = tuple(args)
             output_prefix = Path(self.command[self.command.index("-of") + 1])
+            if cwd:
+                output_prefix = cwd / output_prefix
+                assert (cwd / "model.bin").read_bytes() == b"test"
+                assert (cwd / "audio.wav").read_bytes() == b"test"
+                assert (cwd / "vad.bin").read_bytes() == b"test"
+                assert all(value.isascii() for value in self.command[1:])
             output_prefix.with_suffix(".json").write_text(
                 json.dumps(
                     {
@@ -65,7 +75,9 @@ async def test_transcriber_enables_vad_and_limits_text_context(tmp_path: Path) -
     )
 
     assert transcript.text == "正常语音"
-    assert ("--vad", "-vm", str(vad_model)) == runner.command[-3:]
+    assert (tmp_path / "transcript.json").is_file()
+    assert not list(tmp_path.glob(".voxpull-asr-*"))
+    assert ("--vad", "-vm", "vad.bin" if sys.platform == "win32" else str(vad_model)) == runner.command[-3:]
     assert runner.command[runner.command.index("-mc") + 1] == "64"
     assert "-sns" in runner.command
     assert progress_updates == [(25, "正在识别语音")]

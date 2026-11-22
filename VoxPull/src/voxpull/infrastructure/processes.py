@@ -8,6 +8,7 @@ import subprocess
 import sys
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
+from pathlib import Path
 
 from voxpull.domain.errors import TaskTimeoutError
 
@@ -31,11 +32,13 @@ class ProcessRunner:
         args: Sequence[str],
         *,
         timeout: float,
+        cwd: Path | None = None,
         on_stdout_line: LineCallback | None = None,
         on_stderr_line: LineCallback | None = None,
     ) -> ProcessResult:
         process = await asyncio.create_subprocess_exec(
             *args,
+            cwd=cwd,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
             **({"creationflags": subprocess.CREATE_NO_WINDOW | subprocess.CREATE_NEW_PROCESS_GROUP}

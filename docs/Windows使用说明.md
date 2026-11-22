@@ -53,6 +53,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\VoxPull\scripts\manage-win
 
 ## 兼容范围和验证
 
+Whisper 的 Windows 官方程序存在非 ASCII 参数编码问题；应用在识别时使用临时相对路径和文件链接，完成后自动清理，不要求把素材标题或用户目录改为英文。模型同盘时使用硬链接，无法链接时退回复制。
+
 Windows 适配包括文件锁、后台启停、子进程树清理、中文路径、保留设备名和原生文件夹选择器。自动测试覆盖依赖安装、任务与素材持久化、下载后的字幕 / 总结流程、桌面和窄屏卡片界面、真实 FFmpeg / Whisper / VAD 识别。
 
 [Windows 自动测试记录](https://github.com/xwu225786-droid/video-downloader/actions/workflows/windows.yml) 由 GitHub Windows runner 执行。测试使用本地样例和模拟接口，不代表各平台的受限作品、登录或网络环境均可访问。系统 Chrome 登录态导入目前仅支持 macOS；Windows 请使用应用内的登录窗口。原 Docker 维护入口未做 Windows 迁移。
