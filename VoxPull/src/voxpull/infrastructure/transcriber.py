@@ -74,7 +74,7 @@ class WhisperCppTranscriber:
         )
         output_path = output_prefix.with_suffix(".json")
         if result.returncode != 0 or not output_path.is_file():
-            raise TranscriptionFailedError(detail=result.stderr[-4000:])
+            raise TranscriptionFailedError(detail=f"whisper-cli exit {result.returncode}:\n{result.stderr[-4000:]}")
         try:
             return parse_whisper_json(json.loads(output_path.read_text(encoding="utf-8")))
         except (KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
