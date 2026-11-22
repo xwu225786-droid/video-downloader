@@ -6,7 +6,7 @@ import hashlib
 import json
 import os
 import shutil
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 
 from voxpull.domain.naming import compact_media_id
 from voxpull.infrastructure.material_folders import folder_title, read_index
@@ -26,7 +26,7 @@ def job_paths(job: dict) -> set[Path]:
 
 
 def _json(path: Path) -> dict:
-    return json.loads(path.read_text(encoding="utf-8")) if path.is_file() else {}
+    return json.loads(path.read_text(encoding="utf-8", newline="")) if path.is_file() else {}
 
 
 def plan_reorganization(videos_root: Path, images_root: Path, jobs: dict[str, dict]) -> dict:
@@ -154,7 +154,7 @@ def plan_reorganization(videos_root: Path, images_root: Path, jobs: dict[str, di
             "indexes": indexes, "inventory": inventory, "jobs": updated,
             "groups": [{key: str(g[key]) if isinstance(g[key], Path) else g[key]
                         for key in ("kind", "title", "identity", "target", "job_ids")} for g in groups],
-            "original_indexes": {str(root): (root / ".material-folders.json").read_text(encoding="utf-8") if (root / ".material-folders.json").exists() else None
+            "original_indexes": {str(root): (root / ".material-folders.json").read_text(encoding="utf-8", newline="") if (root / ".material-folders.json").exists() else None
                                  for root in (videos_root, images_root)}}
 
 
@@ -163,12 +163,17 @@ def _rewrite_paths(value, mapping):
         return {key: _rewrite_paths(item, mapping) for key, item in value.items()}
     if isinstance(value, list):
         return [_rewrite_paths(item, mapping) for item in value]
-    if isinstance(value, str) and value.startswith("/"):
-        if value in mapping:
-            return mapping[value]
-        for old, new in sorted(mapping.items(), key=lambda pair: len(pair[0]), reverse=True):
-            if value.startswith(old + "/"):
-                return new + value[len(old):]
+    if isinstance(value, str):
+        # Persisted Windows paths use drive letters or UNC roots. Compare path
+        # components so case-insensitive Windows names and either separator work
+        # without accidentally rewriting a sibling such as "video-backup".
+        path_type = PureWindowsPath if PureWindowsPath(value).is_absolute() else PurePosixPath
+        path = path_type(value)
+        if path.is_absolute():
+            for old, new in sorted(mapping.items(), key=lambda pair: len(pair[0]), reverse=True):
+                old_path = path_type(old)
+                if path.is_relative_to(old_path):
+                    return str(path_type(new) / path.relative_to(old_path))
     return value
 
 
@@ -184,14 +189,14 @@ def apply_reorganization(plan: dict, journal_path: Path) -> None:
             raise ValueError("目标路径已存在，未覆盖")
     for root, original in plan["original_indexes"].items():
         path = Path(root) / ".material-folders.json"
-        if (path.read_text(encoding="utf-8") if path.exists() else None) != original:
+        if (path.read_text(encoding="utf-8", newline="") if path.exists() else None) != original:
             raise ValueError("文件夹索引在规划后发生变化，未移动")
     for name in plan.get("copies", {}):
         if Path(name).exists():
             raise ValueError("封面目标已存在，未覆盖")
     journal = {"moves": [], "writes": [], "directories": [], "indexes": [], "edits": [], "complete": False}
     def save():
-        journal_path.write_text(json.dumps(journal, ensure_ascii=False, indent=2), encoding="utf-8")
+        journal_path.write_text(json.dumps(journal, ensure_ascii=False, indent=2), encoding="utf-8", newline="")
         journal_path.chmod(0o600)
     save()
     try:
@@ -204,7 +209,7 @@ def apply_reorganization(plan: dict, journal_path: Path) -> None:
             journal["moves"].append([old, new])
             save()
         for name, content in plan["writes"].items():
-            with Path(name).open("x", encoding="utf-8") as handle:
+            with Path(name).open("x", encoding="utf-8", newline="") as handle:
                 handle.write(content)
             journal["writes"].append(name)
             save()
@@ -214,17 +219,17 @@ def apply_reorganization(plan: dict, journal_path: Path) -> None:
             journal["writes"].append(name)
             save()
         for name, edit in plan.get("edits", {}).items():
-            if Path(name).read_text(encoding="utf-8") != edit["before"]:
+            if Path(name).read_text(encoding="utf-8", newline="") != edit["before"]:
                 raise ValueError("素材清单已发生变化，未覆盖")
             journal["edits"].append([name, edit["before"]])
             save()
-            Path(name).write_text(edit["after"], encoding="utf-8")
+            Path(name).write_text(edit["after"], encoding="utf-8", newline="")
         for root, entries in plan["indexes"].items():
             path = Path(root) / ".material-folders.json"
             journal["indexes"].append([str(path), plan["original_indexes"][root]])
             save()
             temporary = path.with_suffix(".json.migration-tmp")
-            temporary.write_text(json.dumps({"version": 1, "materials": entries}, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+            temporary.write_text(json.dumps({"version": 1, "materials": entries}, ensure_ascii=False, indent=2) + "\n", encoding="utf-8", newline="")
             temporary.chmod(0o600)
             os.replace(temporary, path)
         for old, info in plan["inventory"].items():
@@ -248,10 +253,10 @@ def rollback_reorganization(journal_path: Path) -> None:
         if original is None:
             path.unlink(missing_ok=True)
         else:
-            path.write_text(original, encoding="utf-8")
+            path.write_text(original, encoding="utf-8", newline="")
             path.chmod(0o600)
     for name, original in reversed(journal.get("edits", [])):
-        Path(name).write_text(original, encoding="utf-8")
+        Path(name).write_text(original, encoding="utf-8", newline="")
     for name in reversed(journal.get("writes", [])):
         Path(name).unlink(missing_ok=True)
     for old, new in reversed(journal.get("moves", [])):
@@ -261,7 +266,7 @@ def rollback_reorganization(journal_path: Path) -> None:
         if Path(name).exists():
             Path(name).rmdir()
     journal["rolled_back"] = True
-    journal_path.write_text(json.dumps(journal, ensure_ascii=False, indent=2), encoding="utf-8")
+    journal_path.write_text(json.dumps(journal, ensure_ascii=False, indent=2), encoding="utf-8", newline="")
 
 
 def plan_friendly_names(videos_root: Path, images_root: Path, jobs: dict[str, dict]) -> dict:
@@ -309,7 +314,7 @@ def plan_friendly_names(videos_root: Path, images_root: Path, jobs: dict[str, di
                     cover = None
                 manifest_path = folder / "manifest.json"
                 if manifest_path.is_file():
-                    original = manifest_path.read_text(encoding="utf-8")
+                    original = manifest_path.read_text(encoding="utf-8", newline="")
                     manifest = json.loads(original)
                     changed = False
                     for asset in manifest.get("assets", []):
