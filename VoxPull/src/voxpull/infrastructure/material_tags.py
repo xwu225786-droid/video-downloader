@@ -1,11 +1,12 @@
 """Durable material labels, independent of legacy in-memory task records."""
 from __future__ import annotations
 
-import fcntl
 import json
 from contextlib import contextmanager
 from pathlib import Path
 from uuid import uuid4
+
+from voxpull.infrastructure.file_lock import lock_file, unlock_file
 
 from voxpull.infrastructure.cookies import save_storage_state
 
@@ -18,12 +19,12 @@ class MaterialTagStore:
     def _locked(self):
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with self.path.with_suffix(".lock").open("a") as lock:
-            fcntl.flock(lock, fcntl.LOCK_EX)
+            lock_file(lock)
             try:
                 data = json.loads(self.path.read_text(encoding="utf-8")) if self.path.exists() else {"tags": [], "assignments": {}}
                 yield data
             finally:
-                fcntl.flock(lock, fcntl.LOCK_UN)
+                unlock_file(lock)
 
     def read(self):
         with self._locked() as data:

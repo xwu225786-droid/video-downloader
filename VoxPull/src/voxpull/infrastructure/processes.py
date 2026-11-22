@@ -4,6 +4,8 @@ import asyncio
 import contextlib
 import os
 import signal
+import subprocess
+import sys
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 
@@ -36,7 +38,8 @@ class ProcessRunner:
             *args,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
-            start_new_session=True,
+            **({"creationflags": subprocess.CREATE_NO_WINDOW | subprocess.CREATE_NEW_PROCESS_GROUP}
+               if sys.platform == "win32" else {"start_new_session": True}),
         )
         self._active.add(process)
         stdout_chunks: list[str] = []
@@ -81,6 +84,22 @@ class ProcessRunner:
     @staticmethod
     async def _terminate(process: asyncio.subprocess.Process) -> None:
         if process.returncode is not None:
+            return
+        if sys.platform == "win32":
+            # Kill the owned process tree, including FFmpeg/Whisper descendants.
+            # terminate() on Windows would kill only the immediate child.
+            def terminate_tree() -> None:
+                subprocess.run(
+                    ["taskkill.exe", "/PID", str(process.pid), "/T", "/F"],
+                    capture_output=True, check=False, timeout=10,
+                    creationflags=subprocess.CREATE_NO_WINDOW,
+                )
+            try:
+                await asyncio.to_thread(terminate_tree)
+            except (OSError, subprocess.SubprocessError):
+                with contextlib.suppress(ProcessLookupError):
+                    process.kill()
+            await process.wait()
             return
         with contextlib.suppress(ProcessLookupError):
             os.killpg(process.pid, signal.SIGTERM)

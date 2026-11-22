@@ -1,0 +1,55 @@
+name: Windows compatibility
+on:
+  push:
+    branches: [main, codex/windows-support]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    env:
+      VOXPULL_HF_ENDPOINT: https://huggingface.co
+      PYTHONUTF8: '1'
+    defaults:
+      run:
+        shell: powershell
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: 视频 下载器
+      - name: Install native dependencies, browser and models
+        working-directory: 视频 下载器
+        run: ./VoxPull/scripts/bootstrap-windows.ps1 -Dev
+      - name: Unit and integration regression tests
+        working-directory: 视频 下载器
+        run: |
+          . ./VoxPull/scripts/windows-common.ps1
+          Set-AppEnvironment
+          Push-Location $AppRoot
+          try {
+            Invoke-Checked $Python @('-m', 'pytest', '-q', 'tests/unit', '--ignore=tests/unit/test_mouse_trajectory.py', '--ignore=tests/unit/test_slider_model_entry.py', 'tests/integration/test_native_platform.py', 'tests/integration/test_material_folders.py', 'tests/integration/test_material_tags.py', 'tests/integration/test_job_records.py', 'tests/integration/test_card_transcript.py', 'tests/integration/test_progressive_results.py', 'tests/integration/test_pipeline.py', 'tests/integration/test_api.py', 'tests/integration/test_pause.py', 'tests/integration/test_ffmpeg.py', 'tests/integration/test_card_actions_ui.py')
+          } finally { Pop-Location }
+      - name: Real FFmpeg and Whisper transcription with Chinese paths
+        working-directory: 视频 下载器
+        run: |
+          . ./VoxPull/scripts/windows-common.ps1
+          Set-AppEnvironment
+          $sample = Join-Path $ToolsRoot 'jfk.wav'
+          Invoke-WebRequest -UseBasicParsing -Uri 'https://raw.githubusercontent.com/ggml-org/whisper.cpp/b5907/samples/jfk.wav' -OutFile $sample
+          if ((Get-FileHash -LiteralPath $sample -Algorithm SHA256).Hash -ne '59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e') { throw 'Audio sample checksum mismatch' }
+          $env:VOXPULL_NATIVE_TRANSCRIBE_SAMPLE = $sample
+          Push-Location $AppRoot
+          try { Invoke-Checked $Python @('-m', 'pytest', '-q', 'tests/integration/test_native_transcription.py') }
+          finally { Pop-Location }
+      - name: Upload test failure logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-logs
+          path: |
+            视频 下载器/.local-tools/state/*.log
+            ${{ runner.temp }}/pytest-of-*/**/server.log
+          if-no-files-found: ignore

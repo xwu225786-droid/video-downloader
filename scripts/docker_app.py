@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-import fcntl
 import json
 import os
 import shutil
@@ -14,6 +13,9 @@ import time
 import urllib.request
 from datetime import datetime
 from pathlib import Path
+
+if sys.platform != "win32":
+    import fcntl
 
 ROOT = Path(__file__).resolve().parents[1]
 STATE = ROOT / ".local-tools/state"
@@ -169,6 +171,8 @@ def start():
 
 
 def main():
+    if sys.platform == "win32":
+        raise SystemExit("Windows 请使用根目录 Windows启动.bat；此 Docker 维护入口仅用于 macOS。")
     parser=argparse.ArgumentParser()
     parser.add_argument("action",choices=["prepare","build","start","stop","status","rollback"])
     action=parser.parse_args().action

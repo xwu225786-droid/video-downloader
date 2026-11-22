@@ -6,13 +6,14 @@ bind-mounted directory owned by the current user, and paths are allowlisted.
 from __future__ import annotations
 
 import argparse
-import fcntl
 import json
 import os
 import signal
 import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+
+from voxpull.infrastructure.file_lock import lock_file
 
 from voxpull.infrastructure.directory_picker import NativeDirectoryPicker
 from voxpull.infrastructure.path_opener import NativePathOpener
@@ -96,7 +97,7 @@ def main():
     signal.signal(signal.SIGTERM, stop)
     signal.signal(signal.SIGINT, stop)
     with (directory / ".owner.lock").open("a") as handle, ThreadPoolExecutor(max_workers=3) as pool:
-        fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        lock_file(handle, blocking=False)
         last_health = 0
         last_hook_poll = 0
         scheduled = set()

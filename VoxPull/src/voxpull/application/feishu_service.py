@@ -129,7 +129,7 @@ class FeishuService:
             state = "connecting"
             path = self.directory / "listener.json"
             try:
-                health = json.loads(path.read_text())
+                health = json.loads(path.read_text(encoding="utf-8"))
                 if self._listener and self._listener.returncode is None and time.time() - health["updated_at"] < 15:
                     state = health["status"]
                 elif self._listener and self._listener.returncode is not None:

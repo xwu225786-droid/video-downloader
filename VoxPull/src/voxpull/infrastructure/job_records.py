@@ -2,12 +2,13 @@
 from __future__ import annotations
 
 import asyncio
-import fcntl
 import json
 from dataclasses import asdict
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
+
+from voxpull.infrastructure.file_lock import lock_file, unlock_file
 
 from voxpull.application.job_service import InMemoryJobRepository, JobService
 from voxpull.domain.models import (
@@ -54,7 +55,7 @@ class FileJobRepository(InMemoryJobRepository):
     def load(self):
         with self._lock:
             for path in self.root.glob("job-*.json"):
-                job = _decode_job(json.loads(path.read_text()))
+                job = _decode_job(json.loads(path.read_text(encoding="utf-8")))
                 if job.metadata.get("summary_state") == "generating":
                     job.metadata["summary_state"] = "failed"
                     self._save(job)
@@ -90,7 +91,7 @@ class FileJobService(JobService):
         self._record_lock = (self.repository.root / ".writer.lock").open("a")
         for attempt in range(100):
             try:
-                fcntl.flock(self._record_lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                lock_file(self._record_lock, blocking=False)
                 break
             except BlockingIOError:
                 if attempt == 99:
@@ -101,7 +102,7 @@ class FileJobService(JobService):
         path = self.repository.root / "batches.json"
         if path.exists():
             self._batches = {key: JobBatch(**{**value, "job_ids": tuple(value["job_ids"])})
-                             for key, value in json.loads(path.read_text()).items()}
+                             for key, value in json.loads(path.read_text(encoding="utf-8")).items()}
         await super().start()
 
     def _save_batches(self):
@@ -124,5 +125,5 @@ class FileJobService(JobService):
         finally:
             lock = getattr(self, "_record_lock", None)
             if lock and not lock.closed:
-                fcntl.flock(lock, fcntl.LOCK_UN)
+                unlock_file(lock)
                 lock.close()

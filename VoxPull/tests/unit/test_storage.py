@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import sys
+
 import json
 from pathlib import Path
 
@@ -32,7 +34,8 @@ def test_media_root_update_is_persisted_and_restored(tmp_path: Path) -> None:
     assert json.loads(location_path.read_text(encoding="utf-8")) == {
         "media_root": str(selected_root.resolve())
     }
-    assert location_path.stat().st_mode & 0o777 == 0o600
+    if sys.platform != "win32":
+        assert location_path.stat().st_mode & 0o777 == 0o600
 
     restored = LocalStorage(
         data_root / "work",

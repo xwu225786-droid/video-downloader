@@ -58,6 +58,7 @@ end run
 def _choose_windows(initial_directory: Path) -> Path | None:
     escaped_initial = str(initial_directory).replace("'", "''")
     command = (
+        "[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new(); "
         "Add-Type -AssemblyName System.Windows.Forms; "
         "$dialog = New-Object System.Windows.Forms.FolderBrowserDialog; "
         f"$dialog.SelectedPath = '{escaped_initial}'; "
@@ -65,9 +66,11 @@ def _choose_windows(initial_directory: Path) -> Path | None:
         "if ($dialog.ShowDialog() -eq 'OK') { $dialog.SelectedPath }"
     )
     result = subprocess.run(
-        ["powershell", "-NoProfile", "-Command", command],
+        ["powershell.exe", "-NoProfile", "-STA", "-Command", command],
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        errors="replace",
         check=False,
     )
     if result.returncode != 0:

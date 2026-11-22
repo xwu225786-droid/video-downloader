@@ -1,3 +1,4 @@
+import sys
 import logging
 import os
 import re
@@ -35,7 +36,8 @@ def test_daily_log_handler_adds_time_and_keeps_three_backups(tmp_path: Path) -> 
         )
         assert handler.when == "MIDNIGHT"
         assert handler.backupCount == LOG_RETENTION_DAYS == 3
-        assert log_path.stat().st_mode & 0o777 == 0o600
+        if sys.platform != "win32":
+            assert log_path.stat().st_mode & 0o777 == 0o600
     finally:
         handler.close()
 

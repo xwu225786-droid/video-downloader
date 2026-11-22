@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import sys
 import subprocess
 from pathlib import Path
 from types import SimpleNamespace
@@ -46,7 +47,7 @@ def test_restart_does_not_start_when_stop_fails(monkeypatch) -> None:
 
 def test_unstall_removes_installed_files(tmp_path, monkeypatch, capsys) -> None:
     project_root = tmp_path / "project"
-    python_path = project_root / ".venv" / "bin" / "python"
+    python_path = project_root / ".venv" / ("Scripts/python.exe" if sys.platform == "win32" else "bin/python")
     python_path.parent.mkdir(parents=True)
     python_path.touch()
     model_path = project_root / "models" / "ggml-medium-q5_0.bin"
@@ -114,7 +115,8 @@ def test_runtime_file_has_restrictive_permissions(tmp_path, monkeypatch) -> None
 
     runtime_path = tmp_path / "runtime.json"
     assert json.loads(runtime_path.read_text(encoding="utf-8"))["pid"] == 4321
-    assert runtime_path.stat().st_mode & 0o777 == 0o600
+    if sys.platform != "win32":
+        assert runtime_path.stat().st_mode & 0o777 == 0o600
 
 
 def test_start_captures_early_process_errors_in_server_log(
@@ -157,7 +159,7 @@ def test_start_prefers_project_virtualenv_for_server(tmp_path, monkeypatch) -> N
             return None
 
     project_root = tmp_path / "project"
-    project_python = project_root / ".venv" / "bin" / "python"
+    project_python = project_root / ".venv" / ("Scripts/python.exe" if sys.platform == "win32" else "bin/python")
     project_python.parent.mkdir(parents=True)
     project_python.touch()
     commands: list[list[str]] = []

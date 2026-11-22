@@ -1,3 +1,4 @@
+import sys
 from pathlib import Path
 
 from voxpull.infrastructure.cookies import write_netscape_cookie_file
@@ -22,4 +23,5 @@ def test_writes_netscape_cookie_file(tmp_path: Path) -> None:
     text = destination.read_text()
     assert text.startswith("# Netscape HTTP Cookie File")
     assert "#HttpOnly_.douyin.com\tTRUE\t/\tTRUE\t2000000000\tsessionid\tsecret" in text
-    assert destination.stat().st_mode & 0o077 == 0
+    if sys.platform != "win32":
+        assert destination.stat().st_mode & 0o077 == 0

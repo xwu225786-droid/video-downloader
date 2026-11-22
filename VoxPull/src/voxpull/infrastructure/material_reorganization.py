@@ -154,7 +154,7 @@ def plan_reorganization(videos_root: Path, images_root: Path, jobs: dict[str, di
             "indexes": indexes, "inventory": inventory, "jobs": updated,
             "groups": [{key: str(g[key]) if isinstance(g[key], Path) else g[key]
                         for key in ("kind", "title", "identity", "target", "job_ids")} for g in groups],
-            "original_indexes": {str(root): (root / ".material-folders.json").read_text() if (root / ".material-folders.json").exists() else None
+            "original_indexes": {str(root): (root / ".material-folders.json").read_text(encoding="utf-8") if (root / ".material-folders.json").exists() else None
                                  for root in (videos_root, images_root)}}
 
 
@@ -184,14 +184,14 @@ def apply_reorganization(plan: dict, journal_path: Path) -> None:
             raise ValueError("目标路径已存在，未覆盖")
     for root, original in plan["original_indexes"].items():
         path = Path(root) / ".material-folders.json"
-        if (path.read_text() if path.exists() else None) != original:
+        if (path.read_text(encoding="utf-8") if path.exists() else None) != original:
             raise ValueError("文件夹索引在规划后发生变化，未移动")
     for name in plan.get("copies", {}):
         if Path(name).exists():
             raise ValueError("封面目标已存在，未覆盖")
     journal = {"moves": [], "writes": [], "directories": [], "indexes": [], "edits": [], "complete": False}
     def save():
-        journal_path.write_text(json.dumps(journal, ensure_ascii=False, indent=2))
+        journal_path.write_text(json.dumps(journal, ensure_ascii=False, indent=2), encoding="utf-8")
         journal_path.chmod(0o600)
     save()
     try:
@@ -224,7 +224,7 @@ def apply_reorganization(plan: dict, journal_path: Path) -> None:
             journal["indexes"].append([str(path), plan["original_indexes"][root]])
             save()
             temporary = path.with_suffix(".json.migration-tmp")
-            temporary.write_text(json.dumps({"version": 1, "materials": entries}, ensure_ascii=False, indent=2) + "\n")
+            temporary.write_text(json.dumps({"version": 1, "materials": entries}, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
             temporary.chmod(0o600)
             os.replace(temporary, path)
         for old, info in plan["inventory"].items():
@@ -248,7 +248,7 @@ def rollback_reorganization(journal_path: Path) -> None:
         if original is None:
             path.unlink(missing_ok=True)
         else:
-            path.write_text(original)
+            path.write_text(original, encoding="utf-8")
             path.chmod(0o600)
     for name, original in reversed(journal.get("edits", [])):
         Path(name).write_text(original, encoding="utf-8")
@@ -261,7 +261,7 @@ def rollback_reorganization(journal_path: Path) -> None:
         if Path(name).exists():
             Path(name).rmdir()
     journal["rolled_back"] = True
-    journal_path.write_text(json.dumps(journal, ensure_ascii=False, indent=2))
+    journal_path.write_text(json.dumps(journal, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
 def plan_friendly_names(videos_root: Path, images_root: Path, jobs: dict[str, dict]) -> dict:

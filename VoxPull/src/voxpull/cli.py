@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import contextlib
-import fcntl
 import json
 import os
 import re
@@ -18,6 +17,8 @@ from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Iterator, Sequence
+
+from voxpull.infrastructure.file_lock import lock_file, unlock_file
 
 from voxpull.config import PROJECT_ROOT, Settings
 
@@ -57,6 +58,8 @@ def _state_dir() -> Path:
     configured = os.getenv("VOXPULL_STATE_DIR")
     if configured:
         return Path(configured).expanduser().resolve()
+    if sys.platform == "win32":
+        return Path(os.getenv("LOCALAPPDATA", str(Path.home() / "AppData" / "Local"))) / "VoxPull" / "state"
     xdg_state_home = os.getenv("XDG_STATE_HOME")
     if xdg_state_home:
         return Path(xdg_state_home).expanduser().resolve() / "voxpull"
@@ -75,12 +78,12 @@ def _log_path() -> Path:
 def _command_lock() -> Iterator[None]:
     state_dir = _state_dir()
     state_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
-    with (state_dir / "command.lock").open("a+", encoding="utf-8") as lock_file:
-        fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX)
+    with (state_dir / "command.lock").open("a+", encoding="utf-8") as handle:
+        lock_file(handle)
         try:
             yield
         finally:
-            fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+            unlock_file(handle)
 
 
 def _read_runtime() -> RuntimeState | None:
@@ -111,6 +114,20 @@ def _remove_runtime() -> None:
 
 
 def _process_command(pid: int) -> str | None:
+    if sys.platform == "win32":
+        # A PID alone is unsafe: Windows may already have reused it. Check the
+        # command line and the per-start random token before stopping anything.
+        try:
+            result = subprocess.run(
+                ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command",
+                 "[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new(); "
+                 f"(Get-CimInstance Win32_Process -Filter 'ProcessId = {int(pid)}').CommandLine"],
+                capture_output=True, text=True, encoding="utf-8", errors="replace",
+                check=False, timeout=5, creationflags=subprocess.CREATE_NO_WINDOW,
+            )
+        except (OSError, subprocess.SubprocessError):
+            return None
+        return result.stdout.strip() if result.returncode == 0 and result.stdout.strip() else None
     try:
         result = subprocess.run(
             ["ps", "-p", str(pid), "-o", "stat=", "-o", "command="],
@@ -211,6 +228,16 @@ def _wait_for_exit(state: RuntimeState, timeout: float) -> bool:
 
 
 def _terminate(state: RuntimeState) -> bool:
+    if sys.platform == "win32":
+        try:
+            subprocess.run(
+                ["taskkill.exe", "/PID", str(state.pid), "/T", "/F"],
+                capture_output=True, check=False, timeout=15,
+                creationflags=subprocess.CREATE_NO_WINDOW,
+            )
+        except (OSError, subprocess.SubprocessError):
+            return False
+        return _wait_for_exit(state, 5.0)
     try:
         os.kill(state.pid, signal.SIGTERM)
     except ProcessLookupError:
@@ -226,6 +253,18 @@ def _terminate(state: RuntimeState) -> bool:
     except PermissionError:
         return False
     return _wait_for_exit(state, 2.0)
+
+
+def _project_python() -> Path:
+    if sys.platform == "win32":
+        return PROJECT_ROOT / ".venv" / "Scripts" / "python.exe"
+    return PROJECT_ROOT / ".venv" / "bin" / "python"
+
+
+def _background_options() -> dict[str, Any]:
+    if sys.platform == "win32":
+        return {"creationflags": subprocess.CREATE_NO_WINDOW | subprocess.CREATE_NEW_PROCESS_GROUP}
+    return {"start_new_session": True}
 
 
 def _start(_args: argparse.Namespace) -> int:
@@ -256,7 +295,7 @@ def _start(_args: argparse.Namespace) -> int:
         log_path = _log_path()
         log_path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
         token = secrets.token_hex(16)
-        project_python = PROJECT_ROOT / ".venv" / "bin" / "python"
+        project_python = _project_python()
         server_python = project_python if project_python.is_file() else Path(sys.executable)
         command = [str(server_python), "-m", "voxpull", "_serve", token]
         environment = os.environ.copy()
@@ -275,7 +314,7 @@ def _start(_args: argparse.Namespace) -> int:
                     stdin=subprocess.DEVNULL,
                     stdout=startup_log,
                     stderr=subprocess.STDOUT,
-                    start_new_session=True,
+                    **_background_options(),
                     close_fds=True,
                 )
         except OSError as exc:
@@ -364,7 +403,7 @@ def _remove_path(path: Path) -> None:
 
 
 def _uninstall_playwright() -> bool:
-    python_path = PROJECT_ROOT / ".venv" / "bin" / "python"
+    python_path = _project_python()
     if not python_path.is_file():
         return True
 

@@ -191,7 +191,7 @@ class PlaywrightBrowser:
 
     def _saved_auth_status(self) -> str:
         try:
-            state = json.loads(self.storage_state_path.read_text())
+            state = json.loads(self.storage_state_path.read_text(encoding="utf-8"))
             return "saved" if has_douyin_login_cookie(state.get("cookies", [])) else "missing"
         except (OSError, ValueError, TypeError):
             return "missing"
@@ -213,7 +213,7 @@ class PlaywrightBrowser:
             viewport={"width": 1280, "height": 820},
         )
         if self.storage_state_path.is_file():
-            state = json.loads(self.storage_state_path.read_text())
+            state = json.loads(self.storage_state_path.read_text(encoding="utf-8"))
             profile_has_login = has_douyin_login_cookie(await self._auth_context.cookies())
             if state.get("cookies") and (not profile_has_login or self.storage_state_path.stat().st_mtime_ns > profile_cookie_time):
                 await self._auth_context.add_cookies(state["cookies"])
@@ -370,7 +370,7 @@ class PlaywrightBrowser:
                 raise BrowserFailedError("请先在当前作品窗口完成验证；任务等待期间不替换浏览器会话")
             await asyncio.to_thread(import_chrome_douyin_state, self.storage_state_path)
             if self._auth_context is not None:
-                saved = json.loads(self.storage_state_path.read_text())
+                saved = json.loads(self.storage_state_path.read_text(encoding="utf-8"))
                 await self._auth_context.add_cookies(saved.get("cookies", []))
                 save_storage_state(self.storage_state_path, await self._auth_context.storage_state())
             self._status = "saved"

@@ -1,0 +1,31 @@
+{
+  "uv": {
+    "url": "https://github.com/astral-sh/uv/releases/download/0.13.9/uv-x86_64-pc-windows-msvc.zip",
+    "sha256": "edd61f7f5728a56cc62455386661860bdfc7bab65872f39b0c25bdcc1d8e1beb",
+    "executable": "uv.exe"
+  },
+  "ffmpeg": {
+    "url": "https://github.com/GyanD/codexffmpeg/releases/download/9.1/ffmpeg-9.1-essentials_build.zip",
+    "sha256": "b9bbbb3acece000cbeec994f856649354e52c773807841e78908374b24d658fd",
+    "executable": "ffmpeg.exe"
+  },
+  "whisper": {
+    "url": "https://github.com/ggml-org/whisper.cpp/releases/download/b5907/whisper-bin-x64.zip",
+    "sha256": "ecca07b277d943e9b9f4712856a144b857271a6b333104e511e1988e80db582b",
+    "executable": "whisper-cli.exe"
+  },
+  "models": [
+    {
+      "path": "ggerganov/whisper.cpp/resolve/362722b3fdcd2300b58a8286933ead1c48619667/ggml-medium-q5_0.bin",
+      "filename": "ggml-medium-q5_0.bin",
+      "sha256": "19fea4b380c3a618ec4723c3eef2eb785ffba0d0538cf43f8f235e7b3b34220f",
+      "override": "VOXPULL_MODEL_URL"
+    },
+    {
+      "path": "ggml-org/whisper-vad/resolve/main/ggml-silero-v6.2.0.bin",
+      "filename": "ggml-silero-v6.2.0.bin",
+      "sha256": "2aa269b785eeb53a82983a20501ddf7c1d9c48e33ab63a41391ac6c9f7fb6987",
+      "override": "VOXPULL_VAD_MODEL_URL"
+    }
+  ]
+}

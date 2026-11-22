@@ -1,13 +1,15 @@
 """Stable title-named material directories with collision-safe identities."""
 from __future__ import annotations
 
-import fcntl
 import json
+import ntpath
 import os
 import re
 import threading
 import unicodedata
 from pathlib import Path
+
+from voxpull.infrastructure.file_lock import lock_file
 
 from voxpull.domain.naming import compact_media_id
 
@@ -21,6 +23,9 @@ def folder_title(title: str, identity: str) -> str:
     value = " ".join(value.split()).strip(" .")
     # Leave room below the filesystem's 255-byte component limit for collision suffixes.
     value = value.encode("utf-8")[:180].decode("utf-8", errors="ignore").rstrip(" .")
+    # Windows reserves device names even when followed by a filename extension.
+    if value and ntpath.isreserved(value):
+        value = "_" + value
     return value or f"未命名作品 {compact_media_id(identity)}"
 
 
@@ -55,7 +60,7 @@ def find_material_folder(root: Path, identity: str) -> Path | None:
 def ensure_material_folder(root: Path, identity: str, title: str) -> Path:
     root.mkdir(parents=True, exist_ok=True)
     with _lock, (root / ".material-folders.lock").open("a") as handle:
-        fcntl.flock(handle, fcntl.LOCK_EX)
+        lock_file(handle)
         entries = read_index(root)
         folder = _entry_folder(root, entries.get(identity) or entries.get("@stem:" + compact_media_id(identity)))
         if folder is None:

@@ -57,7 +57,7 @@ class FeishuConfigStore:
     def load(self) -> FeishuConfig:
         if not self.path.exists():
             return FeishuConfig()
-        return FeishuConfig.model_validate_json(self.path.read_text())
+        return FeishuConfig.model_validate_json(self.path.read_text(encoding="utf-8"))
 
     def save(self, config: FeishuConfig):
         save_storage_state(self.path, config.model_dump())

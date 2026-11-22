@@ -2,6 +2,14 @@
 
 在本地保存分享链接中的视频、图文素材，提取字幕，并按需生成 AI 总结。基于 [VoxPull](https://github.com/memorate/VoxPull) 定制开发。
 
+## 联系方式
+
+邮箱：[2365120775@qq.com](mailto:2365120775@qq.com)
+
+## 免责声明
+
+本项目仅供个人使用、学习与交流。请遵守相关法律法规及平台规则，尊重他人的知识产权和隐私，不得用于违法违规用途。
+
 ## 功能
 
 - 支持抖音、小红书、Bilibili 等分享链接；实际可用性取决于平台访问权限、作品状态与下载器支持情况。
@@ -13,7 +21,7 @@
 
 ## 当前发布范围
 
-这是当前应用的**源码版本**，主要在 Apple Silicon Mac 上验证。尚未提供通用安装包，也未完成 Windows 的安装适配验证。
+这是当前应用的**源码版本**，提供 macOS 原生初始化流程及 Windows 11 x64（Intel / AMD）原生安装、启动入口。Windows 自动验证见 [GitHub Actions](https://github.com/xwu225786-droid/video-downloader/actions/workflows/windows.yml)。尚未提供单文件安装包；Windows ARM、32 位系统不在当前适配范围内。
 
 仓库不包含下载视频、登录 Cookie、接口密钥、历史任务、运行环境和模型权重。首次使用仍需准备依赖与语音识别模型。
 
@@ -39,6 +47,18 @@ uv run vox stop
 ```
 
 需要登录或平台验证时，请在应用提供的浏览器窗口完成。AI 总结需在页面设置中填写你自己的接口地址、模型和 API Key；语音识别本身在本地运行。
+
+## 快速开始：Windows 11 x64
+
+从 GitHub 点击 **Code → Download ZIP**，解压到自己的可写目录（不要放在压缩包内直接运行），不需要安装 GitHub 软件或 Docker。
+
+1. 双击根目录 **`Windows安装.bat`**，首次联网安装 Python 3.14、项目依赖、Chromium、FFmpeg、whisper.cpp 和 Whisper / VAD 模型。模型约 514 MiB，请预留数 GB 磁盘空间。所有运行组件放在项目目录，不需要管理员权限。
+2. 安装完成后双击 **`Windows启动.bat`**，网页自动打开；关闭启动终端后，服务继续在后台运行。
+3. 退出应用时双击 **`Windows停止.bat`**。关闭网页不会停止后台服务。
+
+安装、启动失败时，窗口会保留错误信息；服务日志位于 `.local-tools/state/server.log`。安装程序可重复运行，下载包和模型均校验 SHA-256。网络下载失败可检查 GitHub / Hugging Face 访问后重试；更多配置见 [Windows 使用说明](docs/Windows使用说明.md)。
+
+Windows 可通过应用的登录窗口保存登录态。现有的“同步系统 Chrome 登录态”功能仍仅支持 macOS；Windows 不使用该入口。原 `.command` 和 Docker 维护脚本属于 macOS 开发环境，Windows 使用上面的 `.bat` 入口。
 
 ## 使用流程
 
@@ -82,15 +102,6 @@ uv run pytest tests/unit/test_summarizer.py tests/unit/test_summary_service.py t
 下载素材、浏览器登录态和配置默认保存在本机。手动或自动生成总结时，相关文案会发送至你配置的 AI 接口；启用飞书机器人后，结果可能回传至飞书。
 
 请仅处理你有权访问和保存的内容。
-
-## 联系方式
-
-邮箱：[2365120775@qq.com](mailto:2365120775@qq.com)
-
-## 免责声明
-
-本项目仅供个人使用、学习与交流。请遵守相关法律法规及平台规则，尊重他人的知识产权和隐私，不得用于违法违规用途。
-
 
 ## 上游项目与许可
 
