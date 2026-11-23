@@ -27,3 +27,14 @@ async def put_config(payload: SpeechConfigRequest, request: Request):
 async def clear_config(request: Request):
     request.app.state.container.transcription_provider.clear()
     return Response(status_code=204)
+
+
+@router.post('/models')
+async def list_models(payload: SpeechConfigRequest, request: Request):
+    models = await request.app.state.container.transcription_provider.list_models(**payload.model_dump())
+    return {"models": models}
+
+
+@router.post('/test')
+async def test_connection(payload: SpeechConfigRequest, request: Request):
+    return await request.app.state.container.transcription_provider.test_connection(**payload.model_dump())

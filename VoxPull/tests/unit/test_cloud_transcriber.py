@@ -132,3 +132,51 @@ def test_bad_endpoint_not_saved(tmp_path, url):
     with pytest.raises(InvalidInputError):
         service.configure('compatible', url, 'asr', 'key')
     assert not service.config_path.exists()
+
+
+async def test_probe_uses_unsaved_values_real_sample_and_does_not_save(tmp_path):
+    seen = []
+    def handler(request):
+        assert str(request.url) == 'https://test-asr.example/v1/audio/transcriptions'
+        assert request.headers['authorization'] == 'Bearer probe-key'
+        body = request.read()
+        assert b'RIFF' in body and b'speech-test.wav' in body and b'probe-model' in body
+        seen.append(request)
+        return httpx.Response(200, json={'text': 'Hello, this is a test.'})
+    service = provider(tmp_path, handler)
+    before = service.status()
+    result = await service.test_connection(provider='compatible', base_url='https://test-asr.example/v1', model='probe-model', api_key='probe-key')
+    assert result['ok'] and result['text'] and result['elapsed_ms'] >= 0
+    assert service.status() == before and not service.config_path.exists() and len(seen) == 1
+
+
+@pytest.mark.parametrize('status', [401, 403, 404, 429, 503, 302])
+async def test_probe_reports_api_failures_without_saving_or_leaking_key(tmp_path, status):
+    service = provider(tmp_path, lambda _: httpx.Response(status, text='private probe-key'))
+    with pytest.raises(TranscriptionFailedError) as error:
+        await service.test_connection(provider='compatible', base_url='https://asr.example/v1', model='asr', api_key='probe-key')
+    assert 'probe-key' not in str(error.value) and not service.config_path.exists()
+
+
+async def test_probe_saved_key_only_for_same_endpoint_and_models_are_filtered(tmp_path):
+    def handler(request):
+        assert request.headers['authorization'] == 'Bearer saved-key'
+        if request.url.path.endswith('/models'):
+            return httpx.Response(200, json={'data': [{'id': 'chat-model'}, {'id': 'FunAudioLLM/SenseVoiceSmall'}]})
+        return httpx.Response(200, json={'text': 'hello'})
+    service = provider(tmp_path, handler)
+    service.configure('siliconflow', SILICONFLOW_BASE, SILICONFLOW_MODEL, 'saved-key')
+    original = service.config_path.read_bytes()
+    payload = dict(provider='siliconflow', base_url=SILICONFLOW_BASE, model=SILICONFLOW_MODEL, api_key='')
+    assert await service.list_models(**payload) == [SILICONFLOW_MODEL]
+    assert (await service.test_connection(**payload))['ok']
+    assert service.config_path.read_bytes() == original
+    with pytest.raises(InvalidInputError):
+        await service.test_connection(**{**payload, 'base_url': 'https://another.example/v1'})
+
+
+@pytest.mark.parametrize('payload', [{}, {'text': ''}, {'text': None}, 'not an object'])
+async def test_probe_does_not_claim_success_without_recognized_text(tmp_path, payload):
+    service = provider(tmp_path, lambda _: httpx.Response(200, json=payload))
+    with pytest.raises(TranscriptionFailedError, match='未返回'):
+        await service.test_connection(provider='siliconflow', base_url=SILICONFLOW_BASE, model=SILICONFLOW_MODEL, api_key='key')

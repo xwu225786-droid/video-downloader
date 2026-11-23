@@ -176,7 +176,7 @@ const elements = {
   summaryConfigModelStatus: document.querySelector("#summary-config-model-status"),
   summaryConfigModelStatusText: document.querySelector("#summary-config-model-status .summary-status-text"),
   summaryConfigKeyToggle: document.querySelector("#summary-config-key-toggle"),
-  summaryPresets: [...document.querySelectorAll(".summary-preset")],
+  summaryPresets: [...document.querySelectorAll("#summary-config-dialog .summary-preset")],
   summaryConfigError: document.querySelector("#summary-config-error"),
   summaryConfigClear: document.querySelector("#summary-config-clear"),
   summaryConfigSave: document.querySelector("#summary-config-save"),

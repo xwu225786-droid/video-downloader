@@ -61,3 +61,19 @@ async def test_saved_card_cloud_transcription_then_summary_and_failed_regenerati
         assert response.status_code == 502 and 'API Key' in response.text
         assert service.get(ident).result.transcript.text == '云端字幕内容'
         assert service.get(ident).status.value == 'completed'
+
+
+async def test_model_probe_api_is_independent_of_saved_configuration(tmp_path):
+    app = create_app(make_settings(tmp_path))
+    async with app.router.lifespan_context(app):
+        provider = app.state.container.transcription_provider
+        provider.transport = httpx.MockTransport(lambda request: httpx.Response(200,
+            json={'data': [{'id': 'whisper-test'}]} if request.url.path.endswith('/models') else {'text': 'Hello test'}))
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app),base_url='http://test') as client:
+            original = (await client.get('/api/transcription/config')).json()
+            config = {'provider':'compatible', 'base_url':'https://asr.example/v1', 'model':'whisper-test', 'api_key':'test-key'}
+            response = await client.post('/api/transcription/test', json=config)
+            assert response.status_code == 200 and response.json()['ok']
+            assert 'test-key' not in response.text
+            assert (await client.post('/api/transcription/models', json=config)).json()['models'] == ['whisper-test']
+            assert (await client.get('/api/transcription/config')).json() == original

@@ -48,3 +48,9 @@ target-version = "py314"
 [tool.ruff.lint.per-file-ignores]
 # Preserve the exact user-supplied standalone algorithm, including its formatting.
 "src/voxpull/infrastructure/mouse_trajectory.py" = ["E701", "E702"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"src/voxpull/infrastructure/assets/speech-test.wav" = "voxpull/infrastructure/assets/speech-test.wav"
+
+[tool.hatch.build.targets.sdist.force-include]
+"src/voxpull/infrastructure/assets/speech-test.wav" = "src/voxpull/infrastructure/assets/speech-test.wav"

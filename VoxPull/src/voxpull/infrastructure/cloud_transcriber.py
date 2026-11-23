@@ -5,6 +5,8 @@ import asyncio
 import io
 import json
 import math
+import shutil
+import time
 import wave
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -12,7 +14,7 @@ from urllib.parse import urlsplit
 
 import httpx
 
-from voxpull.domain.errors import InvalidInputError, TranscriptionFailedError
+from voxpull.domain.errors import DependencyMissingError, InvalidInputError, TranscriptionFailedError
 from voxpull.domain.models import Transcript, TranscriptSegment
 from voxpull.infrastructure.cookies import save_storage_state
 from voxpull.infrastructure.transcriber import _to_simplified_chinese
@@ -77,9 +79,7 @@ class SelectableTranscriber:
         if not config.api_key.isascii() or any(c in config.api_key for c in '\r\n'):
             raise InvalidInputError("API Key 需要使用不含换行的英文字符")
 
-    def configure(self, provider, base_url, model, api_key):
-        if self._active:
-            raise InvalidInputError("语音识别正在进行，请完成后再修改配置")
+    def resolve_config(self, provider, base_url, model, api_key):
         base_url = base_url.strip().rstrip('/')
         # Accept either a /v1 base or the full transcription endpoint.
         if base_url.endswith('/audio/transcriptions'):
@@ -89,9 +89,81 @@ class SelectableTranscriber:
         key = api_key.strip() or (previous.api_key if same_service else "")
         config = SpeechConfig(provider, base_url, model.strip(), key)
         self._validate(config)
+        return config
+
+    def configure(self, provider, base_url, model, api_key):
+        if self._active:
+            raise InvalidInputError("语音识别正在进行，请完成后再修改配置")
+        config = self.resolve_config(provider, base_url, model, api_key)
         save_storage_state(self.config_path, asdict(config))
         self.config = config
         return self.status()
+
+    @staticmethod
+    def checked_response(response):
+        if response.is_error or response.is_redirect:
+            hints = {401: "API Key 无效", 403: "接口无访问权限", 404: "请检查接口地址和模型名称",
+                     413: "音频超过接口上传限制", 429: "接口限流或额度不足，请稍后重试"}
+            raise TranscriptionFailedError(
+                f"语音识别接口请求失败（HTTP {response.status_code}）：" + hints.get(response.status_code, "服务暂时不可用"))
+        try:
+            return response.json()
+        except ValueError as exc:
+            raise TranscriptionFailedError("语音识别接口没有返回有效 JSON") from exc
+
+    async def list_models(self, **payload):
+        config = self.resolve_config(**payload)
+        if config.provider == 'local':
+            return []
+        try:
+            async with httpx.AsyncClient(timeout=15, transport=self.transport, trust_env=False,
+                                         follow_redirects=False) as client:
+                response = await client.get(config.base_url + '/models',
+                    headers={"Authorization": f"Bearer {config.api_key}"})
+            data = self.checked_response(response)
+        except httpx.HTTPError as exc:
+            raise TranscriptionFailedError("无法获取语音模型列表，请检查网络或手动输入模型") from exc
+        entries = data.get('data') if isinstance(data, dict) else None
+        if not isinstance(entries, list):
+            raise TranscriptionFailedError("接口没有返回有效模型列表，可手动输入模型名称")
+        models = {item['id'] for item in entries if isinstance(item, dict)
+                  and isinstance(item.get('id'), str) and 0 < len(item['id']) <= 256}
+        if config.provider == 'siliconflow':
+            models = {name for name in models if any(value in name.casefold()
+                       for value in ('sensevoice', 'telespeech', 'whisper', 'asr', 'transcri'))}
+        return sorted(models)[:500]
+
+    async def test_connection(self, **payload):
+        config = self.resolve_config(**payload)
+        if config.provider == 'local':
+            if not (shutil.which(self.local.binary) or Path(self.local.binary).is_file()):
+                raise DependencyMissingError("找不到本地 whisper-cli")
+            if not self.local.model_path.is_file():
+                raise DependencyMissingError("找不到本地 Whisper 模型")
+            if self.local.vad_model_path and not self.local.vad_model_path.is_file():
+                raise DependencyMissingError("找不到本地 VAD 模型")
+            return {"ok": True, "message": "本地识别依赖已就绪（未执行语音识别）"}
+        audio = Path(__file__).parent / 'assets' / 'speech-test.wav'
+        if not audio.is_file():
+            raise DependencyMissingError("缺少语音连接测试样例，请检查安装文件")
+        started = time.monotonic()
+        try:
+            async with httpx.AsyncClient(timeout=min(self.timeout, 30), transport=self.transport,
+                                         trust_env=False, follow_redirects=False) as client:
+                response = await client.post(config.base_url + '/audio/transcriptions',
+                    headers={"Authorization": f"Bearer {config.api_key}"},
+                    data={"model": config.model},
+                    files={"file": ("speech-test.wav", audio.read_bytes(), "audio/wav")})
+            data = self.checked_response(response)
+        except httpx.TimeoutException as exc:
+            raise TranscriptionFailedError("模型连接测试超时，请检查服务状态后重试") from exc
+        except httpx.HTTPError as exc:
+            raise TranscriptionFailedError("无法连接语音识别服务，请检查接口地址和网络") from exc
+        if not isinstance(data, dict) or not isinstance(data.get('text'), str) or not data['text'].strip():
+            raise TranscriptionFailedError("接口已响应，但未返回测试语音的识别文字，请检查模型")
+        return {"ok": True, "message": "模型连通成功，测试语音已识别",
+                "text": _to_simplified_chinese(data['text'].strip()).replace(config.api_key, '[已隐藏]')[:200],
+                "elapsed_ms": round((time.monotonic() - started) * 1000)}
 
     def clear(self):
         if self._active:
@@ -135,15 +207,7 @@ class SelectableTranscriber:
                         response = await client.post(config.base_url + '/audio/transcriptions',
                             headers={"Authorization": f"Bearer {config.api_key}"}, data=data,
                             files={"file": ("audio.wav", buffer.getvalue(), "audio/wav")})
-                        if response.is_error or response.is_redirect:
-                            hints = {401: "API Key 无效", 403: "接口无访问权限", 404: "请检查接口地址和模型名称",
-                                     413: "音频超过接口上传限制", 429: "接口限流或额度不足，请稍后重试"}
-                            raise TranscriptionFailedError(
-                                f"云端语音识别失败（HTTP {response.status_code}）：" + hints.get(response.status_code, "服务暂时不可用"))
-                        try:
-                            payload = response.json()
-                        except ValueError as exc:
-                            raise TranscriptionFailedError("语音识别接口没有返回有效 JSON") from exc
+                        payload = self.checked_response(response)
                         if not isinstance(payload, dict) or not isinstance(payload.get('text'), str):
                             raise TranscriptionFailedError("语音识别接口返回内容缺少 text 文本")
                         text = _to_simplified_chinese(payload['text'].strip())

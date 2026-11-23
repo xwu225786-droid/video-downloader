@@ -11,6 +11,8 @@ async def test_speech_configuration_ui(static_app, width):  # noqa: F811
              'model': 'FunAudioLLM/SenseVoiceSmall', 'has_api_key': False, 'cloud': False}
     requests = []
     llm_writes = []
+    probes = []
+    probe_failure = False
     llm_config = {"configured": False, "model": "", "base_url": ""}
     errors = []
     async with async_playwright() as p:
@@ -30,6 +32,13 @@ async def test_speech_configuration_ui(static_app, width):  # noqa: F811
                 if route.request.method == 'DELETE':
                     return await route.fulfill(status=204)
                 data = saved
+            elif path == 'transcription/models':
+                data = {'models': ['FunAudioLLM/SenseVoiceSmall', 'TeleAI/TeleSpeechASR']}
+            elif path == 'transcription/test':
+                probes.append(route.request.post_data_json)
+                if probe_failure:
+                    return await route.fulfill(status=502, content_type='application/json', body=json.dumps({'message': 'API Key 无效'}))
+                data = {'ok': True, 'message': '模型连通成功，测试语音已识别', 'text': 'Hello test', 'elapsed_ms': 120}
             elif path == 'system':
                 data = {key: {'ready': True, 'detail': 'ready'} for key in ('python', 'playwright', 'chromium', 'cookie', 'yt_dlp', 'ffmpeg', 'model', 'vad_model', 'whisper_cpp')}
                 data.update(video_storage_path='/videos', image_storage_path='/images', transcription_cloud=saved['cloud'])
@@ -58,13 +67,27 @@ async def test_speech_configuration_ui(static_app, width):  # noqa: F811
         await expect(page.locator('#speech-settings summary')).to_contain_text('语音模型')
         await expect(page.locator('#llm-settings summary')).to_contain_text('LLM 处理模型')
         await page.locator('#speech-settings summary').click()
+        await page.locator('#speech-open').click()
+        await expect(page.locator('#speech-dialog')).to_be_visible()
+        assert await page.locator('#speech-dialog').get_attribute('class') == await page.locator('#summary-config-dialog').get_attribute('class')
         await expect(page.locator('#speech-cloud-fields')).to_be_hidden()
         await page.locator('#speech-provider').select_option('siliconflow')
         await expect(page.locator('#speech-cloud-fields')).to_be_visible()
         await expect(page.locator('#speech-model')).to_have_value('FunAudioLLM/SenseVoiceSmall')
+        await page.locator('#speech-model-trigger').click()
+        await page.locator('#speech-model-list .summary-model-option').filter(has_text='FunAudioLLM/SenseVoiceSmall').click()
         await page.locator('#speech-key').fill('fake-test-key')
+        await page.locator('#speech-test').click()
+        await expect(page.locator('#speech-feedback')).to_contain_text('模型连通成功')
+        assert not requests and probes[0]['api_key'] == 'fake-test-key'
+        await page.locator('#speech-dialog').screenshot(path=f'/tmp/voxpull-speech-dialog-{width}.png')
+        probe_failure = True
+        await page.locator('#speech-test').click()
+        await expect(page.locator('#speech-feedback')).to_contain_text('测试失败：API Key 无效')
+        assert requests == []
+        probe_failure = False
         await page.locator('#speech-save').click()
-        await expect(page.locator('#speech-feedback')).to_have_text('识别设置已保存。')
+        await expect(page.locator('#speech-dialog')).not_to_be_visible()
         await expect(page.locator('#speech-key')).to_have_value('')
         assert requests[0]['api_key'] == 'fake-test-key'
         assert llm_writes == []
@@ -84,14 +107,16 @@ async def test_speech_configuration_ui(static_app, width):  # noqa: F811
         await page.reload()
         await page.locator('#settings-open').click()
         await page.locator('#speech-settings summary').click()
+        await page.locator('#speech-open').click()
         await expect(page.locator('#speech-provider')).to_have_value('siliconflow')
         await expect(page.locator('#speech-key')).to_have_value('')
         assert await page.evaluate('document.documentElement.scrollWidth <= innerWidth')
         assert await page.locator('#speech-base').evaluate('(e) => e.getBoundingClientRect().width > 200')
-        await page.locator('.ai-model-settings').screenshot(path=f'/tmp/voxpull-ai-settings-{width}.png')
+        await page.locator('#speech-dialog').screenshot(path=f'/tmp/voxpull-ai-settings-{width}.png')
         page.once('dialog', lambda dialog: dialog.accept())
         await page.locator('#speech-clear').click()
-        await expect(page.locator('#speech-provider')).to_have_value('local')
+        await expect(page.locator('#speech-dialog')).not_to_be_visible()
+        assert saved['provider'] == 'local'
         assert llm_config['configured'] and llm_config['model'] == 'llm-test-model'
         assert errors == []
         await browser.close()
