@@ -1550,3 +1550,26 @@ body:has(#material-tag-delete-dialog[open]) { overflow: hidden; }
   .queue-search-bar { max-width: none; }
   .queue-search-controls { max-width: none; }
 }
+
+/* Independently configured models share one AI settings section. */
+.ai-model-settings { min-width: 0; }
+.ai-model-card { min-width: 0; margin-top: 14px; padding: 16px; border: 1px solid var(--color-border-default); border-radius: 12px; background: var(--color-bg-control); }
+.ai-model-card > summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; cursor: pointer; list-style: none; }
+.ai-model-card > summary::-webkit-details-marker { display: none; }
+.ai-model-card > summary::before { content: ""; flex: 0 0 auto; width: 6px; height: 6px; border-right: 1.5px solid var(--color-text-secondary); border-bottom: 1.5px solid var(--color-text-secondary); transform: rotate(-45deg); transition: transform 140ms ease; }
+.ai-model-card[open] > summary::before { transform: rotate(45deg); }
+.ai-model-card > summary:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 5px; border-radius: 3px; }
+.ai-model-title { flex: 1; min-width: 0; font-size: 14px; font-weight: 700; }
+.ai-model-card > summary > #speech-state { color: var(--color-text-secondary); font-size: 12px; font-weight: 600; }
+.ai-model-card > summary > .auth-state { flex-shrink: 0; }
+.ai-model-description, .ai-model-note, .ai-model-card .feishu-note { margin: 12px 0 0; color: var(--color-text-secondary); font-size: 12px; line-height: 1.7; overflow-wrap: anywhere; }
+#speech-form { display: grid; gap: 14px; min-width: 0; margin-top: 16px; }
+#speech-cloud-fields { display: grid; gap: 14px; min-width: 0; }
+#speech-form label { display: grid; gap: 7px; min-width: 0; font-size: 12px; font-weight: 600; }
+#speech-form input, #speech-form select { box-sizing: border-box; width: 100%; min-width: 0; min-height: 42px; padding: 9px 11px; border: 1px solid var(--color-border-default); border-radius: 8px; outline: none; background: var(--color-bg-control); color: var(--color-text-primary); font: inherit; font-size: 13px; }
+#speech-form input:focus-visible, #speech-form select:focus-visible { border-color: var(--color-accent); box-shadow: 0 0 0 3px var(--color-accent-soft); }
+#speech-form .feishu-note { margin: 0; font-weight: 400; }
+#speech-form .feishu-actions { justify-content: flex-end; gap: 8px; }
+#speech-feedback:empty { display: none; }
+#speech-feedback { margin: 0; font-size: 12px; line-height: 1.6; }
+@media (max-width: 480px) { .ai-model-card { padding: 14px; } .ai-model-card > summary { gap: 8px; } }

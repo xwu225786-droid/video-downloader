@@ -3672,7 +3672,7 @@ function updateSummaryServiceUi() {
   elements.summaryHint.textContent = configured
     ? `使用 ${model} 生成总结时，文案将发送至该服务。`
     : "配置 OpenAI 兼容接口后，可在结果页生成视频内容总结。";
-  elements.summaryConfigOpen.textContent = configured ? "修改配置" : "配置接口";
+  elements.summaryConfigOpen.textContent = configured ? "修改 LLM 配置" : "配置 LLM 接口";
   elements.summaryConfigOpen.classList.toggle("is-ready-action", configured);
 }
 

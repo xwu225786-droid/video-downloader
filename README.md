@@ -46,7 +46,7 @@ uv run vox start
 uv run vox stop
 ```
 
-需要登录或平台验证时，请在应用提供的浏览器窗口完成。AI 总结需在页面设置中填写你自己的接口地址、模型和 API Key；语音识别默认在本地运行，也可在“设置 → 语音识别”切换到云端接口。
+需要登录或平台验证时，请在应用提供的浏览器窗口完成。AI 总结需在页面设置中填写你自己的接口地址、模型和 API Key；语音识别默认在本地运行，也可在“设置 → AI 配置 → 语音模型”切换到云端接口。
 
 ## 快速开始：Windows 11 x64
 
@@ -62,7 +62,7 @@ Windows 可通过应用的登录窗口保存登录态。现有的“同步系统
 
 ## 云端语音识别
 
-打开 **设置 → 语音识别**，选择“硅基流动”，填写自己的 API Key 并保存。默认接口地址为 `https://api.siliconflow.cn/v1`，模型为 `FunAudioLLM/SenseVoiceSmall`，也可填写 `TeleAI/TeleSpeechASR`。模型是否可用以服务商当前支持与账户权限为准。
+打开 **设置 → AI 配置 → 语音模型**，选择“硅基流动”，填写自己的 API Key 并保存。默认接口地址为 `https://api.siliconflow.cn/v1`，模型为 `FunAudioLLM/SenseVoiceSmall`，也可填写 `TeleAI/TeleSpeechASR`。模型是否可用以服务商当前支持与账户权限为准。
 
 其他服务选择“其他兼容语音识别接口”，填写接口地址、模型名称和 Key。当前支持通过 Bearer Key 鉴权、以 multipart `file` 和 `model` 调用 `/audio/transcriptions` 并返回 JSON `text` 的接口；专有协议和 WebSocket 接口不在此兼容范围。
 

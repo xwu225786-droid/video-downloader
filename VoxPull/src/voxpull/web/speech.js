@@ -28,7 +28,7 @@
       get('model').value = 'FunAudioLLM/SenseVoiceSmall';
     }
     mode();
-    feedback('尚未保存，请点击“保存识别设置”使更改生效。');
+    feedback('尚未保存，请点击“保存语音模型”使更改生效。');
   });
   const busy = (value) => {
     get('save').disabled = value;

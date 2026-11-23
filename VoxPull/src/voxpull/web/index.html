@@ -8,7 +8,7 @@
     <meta name="theme-color" content="#0e1726" media="(prefers-color-scheme: dark)"/>
     <title>素材保存与视频转写</title>
     <link rel="icon" href="/static/favicon.svg?v=20261122-tv" type="image/svg+xml"/>
-    <link rel="stylesheet" href="/static/styles.css?v=20261122-card-labels-gray-square"/>
+    <link rel="stylesheet" href="/static/styles.css?v=20261123-ai-model-settings"/>
 </head>
 <body>
 <a class="skip-link" href="#main-content">跳到主要内容</a>
@@ -77,62 +77,52 @@
                     </div>
                 </div>
 
-                <div class="auth-block summary-service-block">
+                <section class="auth-block ai-model-settings" aria-labelledby="ai-config-title">
                     <div class="auth-heading">
-                        <div class="auth-title">
-                            <strong>AI 配置</strong>
-                            <span class="cookie-help">
-                                <button
-                                        class="cookie-help-trigger"
-                                        type="button"
-                                        aria-label="关于 AI 总结的数据流向"
-                                        aria-describedby="summary-help-tooltip"
-                                >?</button>
-                                <span id="summary-help-tooltip" class="cookie-help-tooltip" role="tooltip">
-                                    <strong>文案会离开本机吗？</strong>
-                                    <span>会。AI 总结调用你配置的 OpenAI 兼容接口，转写文案将发送到该服务；接口凭据只保存在本机。</span>
-                                </span>
+                        <div class="auth-title"><strong id="ai-config-title">AI 配置</strong></div>
+                    </div>
+                    <p class="ai-config-intro">语音模型负责转写，LLM 处理模型负责 AI 总结。两项可分别设置服务、模型和 API Key，独立保存。</p>
+                    <details class="ai-model-card" id="speech-settings">
+                        <summary><span class="ai-model-title">语音模型</span> <span id="speech-state" aria-live="polite">本地 Whisper</span></summary>
+                        <form id="speech-form" autocomplete="off">
+                            <label>识别方式 <select id="speech-provider">
+                                <option value="local">本地 Whisper（离线）</option>
+                                <option value="siliconflow">硅基流动</option>
+                                <option value="compatible">其他兼容语音识别接口</option>
+                            </select></label>
+                            <div id="speech-cloud-fields" class="hidden">
+                                <label>接口地址 <input id="speech-base" type="url" maxlength="512" placeholder="https://api.siliconflow.cn/v1"/></label>
+                                <label>语音识别模型 <input id="speech-model" maxlength="256" list="speech-models" placeholder="FunAudioLLM/SenseVoiceSmall"/></label>
+                                <datalist id="speech-models"><option value="FunAudioLLM/SenseVoiceSmall"></option><option value="TeleAI/TeleSpeechASR"></option></datalist>
+                                <label>API Key <input id="speech-key" type="password" maxlength="2048" autocomplete="new-password" placeholder="填写语音识别服务的 Key"/></label>
+                                <p class="feishu-note">云端识别会上传提取出的音频，可能产生接口费用；密钥仅保存在本机。支持 /audio/transcriptions 兼容接口，其他专有协议暂不支持。</p>
+                                <p class="feishu-note">长音频自动分段。部分模型仅返回纯文本，不提供时间轴或 SRT；可继续使用复制文案、TXT 和 AI 总结。</p>
+                            </div>
+                            <p id="speech-mode-hint" class="feishu-note">当前使用本地 Whisper，音频不会上传到语音识别服务。</p>
+                            <div class="button-row wrap feishu-actions">
+                                <button id="speech-clear" class="button button-ghost" type="button">清除接口配置</button>
+                                <button id="speech-save" class="button button-primary" type="submit">保存语音模型</button>
+                            </div>
+                            <p id="speech-feedback" role="status"></p>
+                        </form>
+                    </details>
+                    <details class="ai-model-card" id="llm-settings">
+                        <summary>
+                            <span class="ai-model-title">LLM 处理模型</span>
+                            <span id="summary-state" class="auth-state has-error" aria-live="polite">
+                                <span class="status-dot" aria-hidden="true"></span>
+                                <span id="summary-state-label">未配置</span>
                             </span>
+                        </summary>
+                        <p class="ai-model-description">用于提炼文案、生成 AI 总结，与语音模型的接口和密钥分别保存。</p>
+                        <p id="summary-hint" class="ai-model-note" aria-live="polite">配置 OpenAI 兼容接口后，可生成视频内容总结。</p>
+                        <div class="button-row auth-actions">
+                            <button id="summary-config-open" class="button button-secondary" type="button">配置 LLM 接口</button>
                         </div>
-                        <span id="summary-state" class="auth-state has-error" aria-live="polite">
-                            <span class="status-dot" aria-hidden="true"></span>
-                            <span id="summary-state-label">未配置</span>
-                        </span>
-                    </div>
-                    <p id="summary-hint" aria-live="polite">配置 OpenAI 兼容接口后，可在结果页生成视频内容总结。</p>
-                    <div class="button-row auth-actions">
-                        <button id="summary-config-open" class="button button-secondary" type="button">
-                            配置接口
-                        </button>
-                    </div>
-                </div>
+                    </details>
+                </section>
             </div>
         </section>
-
-        <details class="feishu-settings" id="speech-settings">
-            <summary>语音识别 <span id="speech-state" aria-live="polite">本地 Whisper</span></summary>
-            <form id="speech-form" autocomplete="off">
-                <label>识别方式 <select id="speech-provider">
-                    <option value="local">本地 Whisper（离线）</option>
-                    <option value="siliconflow">硅基流动</option>
-                    <option value="compatible">其他兼容语音识别接口</option>
-                </select></label>
-                <div id="speech-cloud-fields" class="hidden">
-                    <label>接口地址 <input id="speech-base" type="url" maxlength="512" placeholder="https://api.siliconflow.cn/v1"/></label>
-                    <label>语音识别模型 <input id="speech-model" maxlength="256" list="speech-models" placeholder="FunAudioLLM/SenseVoiceSmall"/></label>
-                    <datalist id="speech-models"><option value="FunAudioLLM/SenseVoiceSmall"></option><option value="TeleAI/TeleSpeechASR"></option></datalist>
-                    <label>API Key <input id="speech-key" type="password" maxlength="2048" autocomplete="new-password" placeholder="填写语音识别服务的 Key"/></label>
-                    <p class="feishu-note">云端识别会上传提取出的音频，可能产生接口费用；密钥仅保存在本机。支持 /audio/transcriptions 兼容接口，其他专有协议暂不支持。</p>
-                    <p class="feishu-note">长音频自动分段。部分模型仅返回纯文本，不提供时间轴或 SRT；可继续使用复制文案、TXT 和 AI 总结。</p>
-                </div>
-                <p id="speech-mode-hint" class="feishu-note">当前使用本地 Whisper，音频不会上传到语音识别服务。</p>
-                <div class="button-row wrap feishu-actions">
-                    <button id="speech-clear" class="button button-ghost" type="button">清除接口配置</button>
-                    <button id="speech-save" class="button button-primary" type="submit">保存识别设置</button>
-                </div>
-                <p id="speech-feedback" role="status"></p>
-            </form>
-        </details>
 
         <details class="feishu-settings" id="feishu-settings">
             <summary>飞书机器人 <span id="feishu-state" aria-live="polite">未启用</span></summary>
@@ -585,13 +575,13 @@
 >
     <form id="summary-config-form" novalidate>
         <header class="summary-config-header">
-            <h2 id="summary-config-title">配置总结接口</h2>
+            <h2 id="summary-config-title">配置 LLM 处理模型</h2>
             <button id="summary-config-close" class="summary-config-close" type="button" aria-label="关闭配置窗口">
                 <span aria-hidden="true">×</span>
             </button>
         </header>
         <p class="summary-config-copy">
-            支持 OpenAI 兼容接口。生成总结时，转写文案将发送到所选服务；凭据仅保存在本机。
+            用于 AI 总结，独立于语音模型配置。支持 OpenAI 兼容接口；生成总结时会发送转写文案，凭据仅保存在本机。
         </p>
         <div class="summary-config-field">
             <div class="summary-config-label-row">
@@ -763,8 +753,8 @@
     </div>
 </dialog>
 
-<script src="/static/app.js?v=20261123-cloud-speech" defer></script>
+<script src="/static/app.js?v=20261123-ai-model-settings" defer></script>
 <script src="/static/feishu.js?v=20261108-1" defer></script>
-<script src="/static/speech.js?v=20261123-1" defer></script>
+<script src="/static/speech.js?v=20261123-ai-model-settings" defer></script>
 </body>
 </html>
