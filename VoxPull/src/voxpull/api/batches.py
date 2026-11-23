@@ -69,8 +69,9 @@ def download_batch_archive(batch_id: str, request: Request) -> Response:
                 archive.writestr(f"{folder}/文案.txt", result.media.description)
             if result.transcript is not None:
                 archive.writestr(f"{folder}/逐字稿.txt", result.transcript.text)
-                archive.writestr(f"{folder}/时间轴.txt", to_timeline_text(result.transcript))
-                archive.writestr(f"{folder}/字幕.srt", to_srt(result.transcript))
+                if result.transcript.segments:
+                    archive.writestr(f"{folder}/时间轴.txt", to_timeline_text(result.transcript))
+                    archive.writestr(f"{folder}/字幕.srt", to_srt(result.transcript))
             if result.media.cover_path:
                 cover = Path(result.media.cover_path)
                 if cover.is_file():

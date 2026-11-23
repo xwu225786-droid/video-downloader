@@ -33,8 +33,13 @@ def _storage_location_response(
 async def system_status(request: Request) -> SystemStatusResponse:
     container = request.app.state.container
     snapshot = await container.system_service.status()
+    speech = getattr(container, "transcription_provider", None)
+    cloud = bool(speech and speech.status()["cloud"])
+    ready = snapshot.ready if not cloud else all(value.ready for value in (
+        snapshot.playwright, snapshot.chromium, snapshot.cookie, snapshot.yt_dlp, snapshot.ffmpeg))
     return SystemStatusResponse(
-        ready=snapshot.ready,
+        ready=ready,
+        transcription_cloud=cloud,
         video_storage_path=str(container.storage.videos_root.resolve()),
         image_storage_path=str(container.storage.images_root.resolve()),
         python=_component(snapshot.python),

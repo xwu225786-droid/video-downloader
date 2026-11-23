@@ -41,6 +41,7 @@ class SystemStatusResponse(BaseModel):
     whisper_cpp: SystemComponent
     model: SystemComponent
     vad_model: SystemComponent
+    transcription_cloud: bool = False
 
 
 class StorageLocationResponse(BaseModel):

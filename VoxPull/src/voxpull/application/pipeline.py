@@ -182,7 +182,7 @@ class TranscriptionPipeline:
                     await self.audio_extractor.extract(video, audio)
                 self._subtitle_state(job_id, message="等待语音识别")
                 async with self._whisper_slots:
-                    self._subtitle_state(job_id, message="正在加载模型并识别语音", progress=None)
+                    self._subtitle_state(job_id, message="正在识别语音", progress=None)
                     transcript = await self.transcriber.transcribe(
                         audio, job.language, work,
                         lambda value, message: self._subtitle_state(
@@ -524,7 +524,7 @@ class TranscriptionPipeline:
                     message="等待语音识别资源",
                 )
                 async with self._whisper_slots:
-                    self._update(job_id, message="正在使用 whisper.cpp 识别")
+                    self._update(job_id, message="正在识别语音")
                     logger.info(
                         "job_id=%s event=transcription_started language=%s",
                         job_id,

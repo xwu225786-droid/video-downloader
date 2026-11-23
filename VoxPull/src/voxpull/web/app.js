@@ -410,6 +410,11 @@ async function loadSystem() {
       python: "Python",
       playwright: "Playwright",
     };
+    if (status.transcription_cloud) {
+      delete labels.whisper_cpp;
+      delete labels.model;
+      delete labels.vad_model;
+    }
     updateStoragePaths(status.video_storage_path, status.image_storage_path);
     elements.systemGrid.replaceChildren();
     const statusEntries = Object.entries(labels);
@@ -3343,6 +3348,8 @@ function renderVideoResult(result) {
   elements.mediaMeta.classList.add("video-meta");
   elements.mediaMeta.replaceChildren(mediaFacts);
   elements.timelineView.replaceChildren();
+  elements.downloadTimeline.disabled = !transcript.segments.length;
+  elements.downloadSrt.disabled = !transcript.segments.length;
   if (transcript.segments.length === 0) {
     const emptyTimeline = document.createElement("div");
     emptyTimeline.className = "timeline-empty";
@@ -3555,8 +3562,10 @@ elements.batchDownload.addEventListener("click", async () => {
       if (result.media.description) add(result.transcript ? "作品文案.txt" : "文案.txt", result.media.description);
       if (result.transcript) {
         add("文案.txt", result.transcript.text);
-        add("时间轴.txt", timelineText(result.transcript));
-        add("字幕.srt", srtText(result.transcript));
+        if (result.transcript.segments?.length) {
+          add("时间轴.txt", timelineText(result.transcript));
+          add("字幕.srt", srtText(result.transcript));
+        }
       }
       if (result.media.cover_url) {
         try {

@@ -32,6 +32,8 @@ from voxpull.infrastructure.processes import ProcessRunner
 from voxpull.infrastructure.storage import LocalStorage
 from voxpull.infrastructure.system import LocalSystemProbe
 from voxpull.infrastructure.transcriber import WhisperCppTranscriber
+from voxpull.infrastructure.cloud_transcriber import SelectableTranscriber
+from voxpull.api import transcription
 from voxpull.infrastructure.job_records import FileJobRepository, FileJobService
 from voxpull.logging_config import file_logging_enabled, run_log_retention_scheduler
 
@@ -53,6 +55,7 @@ class AppContainer:
     directory_picker: NativeDirectoryPicker
     path_opener: NativePathOpener
     feishu_service: FeishuService | None = None
+    transcription_provider: SelectableTranscriber | None = None
 
 
 _HTTP_STATUS_BY_ERROR = {
@@ -105,6 +108,11 @@ def build_container(settings: Settings) -> AppContainer:
         settings.images_dir,
         settings.storage_location_path,
     )
+    transcription_provider = SelectableTranscriber(
+        WhisperCppTranscriber(runner, settings.whisper_bin, settings.model_path,
+                              settings.whisper_timeout_seconds, settings.vad_model_path),
+        settings.auth_dir / "transcription.json",
+    )
     pipeline = TranscriptionPipeline(
         repository=repository,
         browser=browser,
@@ -112,13 +120,7 @@ def build_container(settings: Settings) -> AppContainer:
         audio_extractor=FfmpegAudioExtractor(
             runner, settings.ffmpeg_bin, settings.ffmpeg_timeout_seconds
         ),
-        transcriber=WhisperCppTranscriber(
-            runner,
-            settings.whisper_bin,
-            settings.model_path,
-            settings.whisper_timeout_seconds,
-            settings.vad_model_path,
-        ),
+        transcriber=transcription_provider,
         storage=storage,
         cover_extractor=FfmpegCoverExtractor(
             runner, settings.ffmpeg_bin, settings.ffmpeg_timeout_seconds
@@ -152,6 +154,7 @@ def build_container(settings: Settings) -> AppContainer:
             max_concurrency=settings.summary_concurrency,
         ),
         summary_provider=summary_provider,
+        transcription_provider=transcription_provider,
         storage=storage,
         directory_picker=NativeDirectoryPicker(),
         path_opener=NativePathOpener(),
@@ -177,6 +180,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         removed = container.storage.cleanup_stale_work_dirs()
         if removed:
             logger.info("event=stale_work_cleanup removed=%s", removed)
+        container.transcription_provider.load()
         await container.summary_provider.load()
         await container.job_service.start()
         await container.feishu_service.start()
@@ -225,6 +229,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             content=body.model_dump(),
         )
 
+    application.include_router(transcription.router)
     application.include_router(system.router)
     application.include_router(auth.router)
     application.include_router(jobs.router)

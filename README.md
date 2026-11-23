@@ -15,7 +15,7 @@
 - 支持抖音、小红书、Bilibili 等分享链接；实际可用性取决于平台访问权限、作品状态与下载器支持情况。
 - 支持单条和批量处理、历史任务、素材标签、搜索和本地视频预览。
 - 视频下载完成即可先预览，字幕识别和可选的 AI 总结在后续阶段继续处理。
-- 本地 Whisper 语音识别，支持编辑、复制以及 TXT、SRT、时间轴导出。
+- 语音识别支持本地 Whisper、硅基流动及其他 OpenAI 兼容语音转文字接口。支持编辑、复制和 TXT；时间轴、SRT 取决于模型是否返回时间戳。
 - 可配置兼容 OpenAI 接口的 AI 总结服务；首次生成和重新生成均提供确认。
 - 提供飞书机器人接入模块，默认关闭，需自行配置应用凭证与权限。
 
@@ -46,7 +46,7 @@ uv run vox start
 uv run vox stop
 ```
 
-需要登录或平台验证时，请在应用提供的浏览器窗口完成。AI 总结需在页面设置中填写你自己的接口地址、模型和 API Key；语音识别本身在本地运行。
+需要登录或平台验证时，请在应用提供的浏览器窗口完成。AI 总结需在页面设置中填写你自己的接口地址、模型和 API Key；语音识别默认在本地运行，也可在“设置 → 语音识别”切换到云端接口。
 
 ## 快速开始：Windows 11 x64
 
@@ -59,6 +59,18 @@ uv run vox stop
 安装、启动失败时，窗口会保留错误信息；服务日志位于 `.local-tools/state/server.log`。安装程序可重复运行，下载包和模型均校验 SHA-256。网络下载失败可检查 GitHub / Hugging Face 访问后重试；更多配置见 [Windows 使用说明](docs/Windows使用说明.md)。
 
 Windows 可通过应用的登录窗口保存登录态。现有的“同步系统 Chrome 登录态”功能仍仅支持 macOS；Windows 不使用该入口。原 `.command` 和 Docker 维护脚本属于 macOS 开发环境，Windows 使用上面的 `.bat` 入口。
+
+## 云端语音识别
+
+打开 **设置 → 语音识别**，选择“硅基流动”，填写自己的 API Key 并保存。默认接口地址为 `https://api.siliconflow.cn/v1`，模型为 `FunAudioLLM/SenseVoiceSmall`，也可填写 `TeleAI/TeleSpeechASR`。模型是否可用以服务商当前支持与账户权限为准。
+
+其他服务选择“其他兼容语音识别接口”，填写接口地址、模型名称和 Key。当前支持通过 Bearer Key 鉴权、以 multipart `file` 和 `model` 调用 `/audio/transcriptions` 并返回 JSON `text` 的接口；专有协议和 WebSocket 接口不在此兼容范围。
+
+保存后，初次视频处理与卡片“提取字幕”都会使用所选服务。音频按最多 5 分钟分段上传，长音频按原顺序合并结果；失败时提示错误，不会静默改用其他服务。云端模式不需要本地 Whisper 和识别模型，仍需要 FFmpeg 提取音频。
+
+云端识别会把音频发送到所配置的服务，并可能产生费用。Key 仅保存在本机的 `VoxPull/data/auth/transcription.json`，不会返回给页面或写入源码；清除接口配置会恢复本地识别。
+
+硅基流动返回纯文本；没有真实时间戳时，只提供 TXT 和后续 AI 总结，不生成虚构的逐句时间轴或空 SRT。接口规范见 [硅基流动官方文档](https://docs.siliconflow.cn/docs/api/audio-transcriptions-post)。
 
 ## 使用流程
 
@@ -99,7 +111,7 @@ uv run pytest tests/unit/test_summarizer.py tests/unit/test_summary_service.py t
 
 ## 隐私与数据
 
-下载素材、浏览器登录态和配置默认保存在本机。手动或自动生成总结时，相关文案会发送至你配置的 AI 接口；启用飞书机器人后，结果可能回传至飞书。
+下载素材、浏览器登录态和配置默认保存在本机。启用云端语音识别时，音频会发送至你配置的识别接口；手动或自动生成总结时，相关文案会发送至你配置的 AI 接口；启用飞书机器人后，结果可能回传至飞书。
 
 请仅处理你有权访问和保存的内容。
 

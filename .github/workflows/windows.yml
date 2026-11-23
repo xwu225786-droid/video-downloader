@@ -30,7 +30,7 @@ jobs:
           Set-AppEnvironment
           Push-Location $AppRoot
           try {
-            Invoke-Checked $Python @('-m', 'pytest', '-q', 'tests/unit', '--ignore=tests/unit/test_mouse_trajectory.py', '--ignore=tests/unit/test_slider_model_entry.py', 'tests/integration/test_native_platform.py', 'tests/integration/test_material_folders.py', 'tests/integration/test_material_tags.py', 'tests/integration/test_job_records.py', 'tests/integration/test_card_transcript.py', 'tests/integration/test_progressive_results.py', 'tests/integration/test_pipeline.py', 'tests/integration/test_api.py', 'tests/integration/test_pause.py', 'tests/integration/test_ffmpeg.py', 'tests/integration/test_card_actions_ui.py')
+            Invoke-Checked $Python @('-m', 'pytest', '-q', 'tests/unit', '--ignore=tests/unit/test_mouse_trajectory.py', '--ignore=tests/unit/test_slider_model_entry.py', 'tests/integration/test_native_platform.py', 'tests/integration/test_material_folders.py', 'tests/integration/test_material_tags.py', 'tests/integration/test_job_records.py', 'tests/integration/test_card_transcript.py', 'tests/integration/test_progressive_results.py', 'tests/integration/test_pipeline.py', 'tests/integration/test_api.py', 'tests/integration/test_pause.py', 'tests/integration/test_ffmpeg.py', 'tests/integration/test_card_actions_ui.py', 'tests/integration/test_speech_config.py', 'tests/integration/test_speech_settings_ui.py')
           } finally { Pop-Location }
       - name: Real FFmpeg and Whisper transcription with Chinese paths
         working-directory: 视频 下载器
