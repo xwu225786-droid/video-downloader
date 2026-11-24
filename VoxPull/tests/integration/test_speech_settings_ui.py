@@ -117,11 +117,13 @@ async def test_speech_configuration_ui(static_app, width):  # noqa: F811
         await expect(page.locator('#speech-key')).to_have_value('')
         assert await page.evaluate('document.documentElement.scrollWidth <= innerWidth')
         assert await page.locator('#speech-mode-hint, #speech-test-hint').count() == 0
-        for save, clear, test in [('speech-save','speech-clear','speech-test'), ('summary-config-save','summary-config-clear','summary-config-test')]:
-            a,b,c = [await page.locator('#'+ident).bounding_box() for ident in [save,clear,test]]
+        for test, clear, save in [('speech-test','speech-clear','speech-save'), ('summary-config-test','summary-config-clear','summary-config-save')]:
+            a,b,c = [await page.locator('#'+ident).bounding_box() for ident in [test,clear,save]]
             assert a['y'] + a['height'] <= b['y']
             assert abs(b['y']-c['y']) <= 1 and b['x'] < c['x']
             assert abs(b['width']-c['width']) <= 1
+            await page.mouse.move(0,0)
+            assert await page.locator('#'+test).evaluate('(e) => getComputedStyle(e).backgroundColor') == 'rgb(255, 255, 255)'
 
         style = await page.evaluate('''() => { const s=getComputedStyle(document.querySelector('#speech-state')); const l=getComputedStyle(document.querySelector('#summary-state-label')); return [s.color===l.color, s.fontSize===l.fontSize, s.fontWeight===l.fontWeight]; }''')
         assert style == [True, True, True]
