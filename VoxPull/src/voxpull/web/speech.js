@@ -57,7 +57,6 @@
   const renderStatus = (config) => {
     saved = config;
     get('state').textContent = !config.cloud ? '本地 Whisper' : '已配置';
-    get('hint').textContent = !config.cloud ? '使用本地 Whisper，音频不上传到语音识别服务。' : `使用 ${config.model} 识别语音，音频将发送至该服务。`;
     populate();
   };
   const normalizeBase = (value) => value.trim().replace(/\/+$/, '').replace(/\/audio\/transcriptions$/, '');
@@ -171,6 +170,6 @@
     } catch (error) { feedback(error.message, true); } finally { busy(false); }
   });
   api('/api/transcription/config').then(renderStatus).catch((error) => {
-    get('hint').textContent = `读取配置失败：${error.message}`; get('save').disabled = true;
+    feedback(`读取配置失败：${error.message}`, true); get('save').disabled = true;
   });
 })();

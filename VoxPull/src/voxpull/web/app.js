@@ -148,7 +148,6 @@ const elements = {
   autoSummaryToggle: document.querySelector("#auto-summary-toggle"),
   summaryService: document.querySelector("#summary-state"),
   summaryServiceLabel: document.querySelector("#summary-state-label"),
-  summaryHint: document.querySelector("#summary-hint"),
   summaryView: document.querySelector("#summary-view"),
   summaryEmpty: document.querySelector("#summary-empty"),
   summaryProgress: document.querySelector("#summary-progress"),
@@ -3666,12 +3665,9 @@ function removeStorage(key) {
 }
 
 function updateSummaryServiceUi() {
-  const { configured, base_url: baseUrl, model } = summaryServiceStatus;
+  const { configured } = summaryServiceStatus;
   elements.summaryService.className = `auth-state ${configured ? "" : "has-error"}`;
   elements.summaryServiceLabel.textContent = configured ? "已配置" : "未配置";
-  elements.summaryHint.textContent = configured
-    ? `使用 ${model} 生成总结时，文案将发送至该服务。`
-    : "配置 OpenAI 兼容接口后，可在结果页生成视频内容总结。";
 }
 
 async function refreshSummaryServiceStatus(resetForm = false) {

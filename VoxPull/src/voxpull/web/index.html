@@ -84,13 +84,8 @@
                     <p class="ai-config-intro">语音模型负责转写，LLM 处理模型负责 AI 总结。两项可分别设置服务、模型和 API Key，独立保存。</p>
                     <details class="ai-model-card" id="speech-settings" open>
                         <summary><span class="ai-model-title">语音模型</span> <span id="speech-status" class="auth-state" aria-live="polite"><span class="status-dot" aria-hidden="true"></span><span id="speech-state">本地 Whisper</span></span></summary>
-                        <p class="ai-model-description">用于语音转文字，与 LLM 处理模型的接口和密钥分别保存。</p>
-                        <p id="speech-hint" class="ai-model-note" aria-live="polite">当前使用本地 Whisper。</p>
                         <div id="speech-dialog" class="model-inline-config">
 <form id="speech-form" novalidate>
-        <p class="summary-config-copy">
-            用于语音转文字，独立于 LLM 配置。云端识别会上传音频，密钥仅保存在本机。
-        </p>
         <div class="summary-config-field">
             <label for="speech-provider">识别方式</label>
             <select id="speech-provider"><option value="local">本地 Whisper（离线）</option><option value="siliconflow">硅基流动</option><option value="compatible">其他兼容接口</option></select>
@@ -191,13 +186,8 @@
                                 <span id="summary-state-label">未配置</span>
                             </span>
                         </summary>
-                        <p class="ai-model-description">用于提炼文案、生成 AI 总结，与语音模型的接口和密钥分别保存。</p>
-                        <p id="summary-hint" class="ai-model-note" aria-live="polite">配置 OpenAI 兼容接口后，可生成视频内容总结。</p>
                         <div id="summary-config-dialog" class="model-inline-config">
 <form id="summary-config-form" novalidate>
-        <p class="summary-config-copy">
-            用于 AI 总结，独立于语音模型配置。支持 OpenAI 兼容接口；生成总结时会发送转写文案，凭据仅保存在本机。
-        </p>
         <div class="summary-config-field">
             <div class="summary-config-label-row">
                 <label for="summary-config-base">接口地址</label>
@@ -821,8 +811,8 @@
     </div>
 </dialog>
 
-<script src="/static/app.js?v=20261124-inline-ai" defer></script>
+<script src="/static/app.js?v=20261124-ai-copy-trim" defer></script>
 <script src="/static/feishu.js?v=20261108-1" defer></script>
-<script src="/static/speech.js?v=20261124-inline-ai" defer></script>
+<script src="/static/speech.js?v=20261124-ai-copy-trim" defer></script>
 </body>
 </html>
