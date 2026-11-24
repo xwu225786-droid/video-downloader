@@ -3871,6 +3871,8 @@ document.querySelector('#llm-settings').addEventListener('toggle', () => {
 });
 elements.summaryPresets.forEach((button) => {
   button.addEventListener("click", () => {
+    summaryConnectionRevision += 1;
+    document.querySelector("#summary-config-feedback").textContent = "";
     elements.summaryConfigBase.value = button.dataset.baseUrl;
     setSummaryConfigError();
     if (elements.summaryConfigKey.value.trim()) {
@@ -3977,6 +3979,30 @@ elements.summaryConfigClear.addEventListener("click", async () => {
   } finally {
     elements.summaryConfigClear.disabled = false;
   }
+});
+
+let summaryConnectionRevision = 0;
+elements.summaryConfigForm.addEventListener("input", () => { summaryConnectionRevision += 1; });
+elements.summaryConfigModelList.addEventListener("click", () => { summaryConnectionRevision += 1; });
+document.querySelector("#summary-config-test").addEventListener("click", async () => {
+  const testButton = document.querySelector("#summary-config-test");
+  const buttons = [testButton, elements.summaryConfigSave, elements.summaryConfigClear];
+  const feedback = document.querySelector("#summary-config-feedback");
+  const revision = summaryConnectionRevision;
+  buttons.forEach((button) => { button.disabled = true; });
+  setSummaryConfigError(); feedback.textContent = "正在测试连接…";
+  try {
+    const result = await api("/api/summary/test", { method: "POST", body: JSON.stringify({
+      base_url: elements.summaryConfigBase.value.trim(), api_key: elements.summaryConfigKey.value.trim(),
+      model: elements.summaryConfigModel.value.trim(),
+    }) });
+    if (revision !== summaryConnectionRevision) { feedback.textContent = "参数已改变，请重新测试。"; return; }
+    feedback.textContent = `${result.message}${result.elapsed_ms != null ? `（${result.elapsed_ms} ms）` : ""}${result.text ? `：${result.text}` : ""}`;
+  } catch (error) {
+    feedback.textContent = "";
+    if (revision === summaryConnectionRevision) setSummaryConfigError(`测试失败：${error.message}`);
+    else feedback.textContent = "参数已改变，请重新测试。";
+  } finally { buttons.forEach((button) => { button.disabled = false; }); }
 });
 
 function updateAutoSummaryUi() {

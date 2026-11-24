@@ -1576,3 +1576,8 @@ body:has(#material-tag-delete-dialog[open]) { overflow: hidden; }
 .model-inline-feedback { margin: 12px 0 0; color: var(--color-status-success); font-size: 12px; line-height: 1.6; }
 .model-inline-feedback:empty { display: none; }
 #speech-state, #summary-state-label { color: inherit; font-size: inherit; font-weight: inherit; }
+
+/* Save spans the first row; clear and test share the second row. */
+.model-inline-config .model-action-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.model-inline-config .model-action-grid .button { width: 100%; min-width: 0; min-height: 40px; margin: 0; padding: 8px 12px; font-size: 13px; }
+.model-inline-config .model-action-grid .model-save { grid-column: 1 / -1; }

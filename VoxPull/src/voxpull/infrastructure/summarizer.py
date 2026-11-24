@@ -187,6 +187,45 @@ class OpenAICompatibleSummarizer:
         finally:
             await self._close_client(client)
 
+    async def test_connection(self, base_url: str, api_key: str, model: str) -> dict:
+        """Probe the entered model without replacing or persisting active settings."""
+        normalized_base = _normalize_base_url(base_url)
+        normalized_model = model.strip()
+        if not normalized_model:
+            raise SummaryInvalidInputError("模型名称不能为空")
+        normalized_key = api_key.strip()
+        if not normalized_key and normalized_base == self._base_url:
+            normalized_key = self._api_key
+        if not normalized_key:
+            raise SummaryInvalidInputError("请填写当前接口的 API Key")
+        client = self._client_factory(normalized_base, normalized_key)
+        # A test makes one small request; do not retry a potentially billed call.
+        if callable(getattr(client, "with_options", None)):
+            client = client.with_options(max_retries=0, timeout=30)
+        started = time.monotonic()
+        try:
+            async with asyncio.timeout(min(self._timeout_seconds, 30)):
+                response = await client.chat.completions.create(
+                    model=normalized_model,
+                    messages=[{"role": "user", "content": "Reply only OK."}],
+                    max_tokens=64,
+                )
+            choices = getattr(response, "choices", None)
+            content = getattr(getattr(choices[0], "message", None), "content", None) if choices else None
+            if not isinstance(content, str) or not content.strip():
+                raise SummaryInvalidResponseError("模型已响应，但未返回测试文字")
+            return {"ok": True, "message": "LLM 模型连通成功",
+                    "text": content.strip().replace(normalized_key, "[已隐藏]")[:160],
+                    "elapsed_ms": round((time.monotonic() - started) * 1000)}
+        except asyncio.CancelledError:
+            raise
+        except SummaryInvalidResponseError:
+            raise
+        except Exception as exc:
+            raise self._map_provider_error(exc) from exc
+        finally:
+            await self._close_client(client)
+
     async def summarize(
         self,
         text: str,

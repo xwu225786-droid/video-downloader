@@ -54,6 +54,9 @@ class SummaryService:
                 raise SummaryConfigBusyError()
             await self._configurator.clear()
 
+    async def test_connection(self, base_url: str, api_key: str, model: str) -> dict:
+        return await self._summarizer.test_connection(base_url, api_key, model)
+
     async def list_models(self, base_url: str, api_key: str) -> list[str]:
         return await self._summarizer.list_models(base_url, api_key)
 

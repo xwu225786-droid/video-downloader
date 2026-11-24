@@ -11,6 +11,7 @@ async def test_speech_configuration_ui(static_app, width):  # noqa: F811
              'model': 'FunAudioLLM/SenseVoiceSmall', 'has_api_key': False, 'cloud': False}
     requests = []
     llm_writes = []
+    llm_probes = []
     probes = []
     probe_failure = False
     llm_config = {"configured": False, "model": "", "base_url": ""}
@@ -50,6 +51,9 @@ async def test_speech_configuration_ui(static_app, width):  # noqa: F811
                     llm_writes.append(data)
                     llm_config.update(configured=True, model=data['model'], base_url=data['base_url'])
                 data = llm_config
+            elif path == 'summary/test':
+                llm_probes.append(route.request.post_data_json)
+                data = {'ok': True, 'message': 'LLM 模型连通成功', 'text': 'OK', 'elapsed_ms': 100}
             elif path == 'summary/models':
                 data = {'models': ['llm-test-model']}
             elif path == 'material-tags':
@@ -99,6 +103,9 @@ async def test_speech_configuration_ui(static_app, width):  # noqa: F811
         await expect(page.locator('#summary-config-model-trigger')).to_be_enabled()
         await page.locator('#summary-config-model-trigger').click()
         await page.locator('#summary-config-model-list .summary-model-option').filter(has_text='llm-test-model').click()
+        await page.locator('#summary-config-test').click()
+        await expect(page.locator('#summary-config-feedback')).to_contain_text('LLM 模型连通成功')
+        assert llm_probes[0]['api_key'] == 'fake-llm-key' and not llm_writes
         await page.locator('#summary-config-save').click()
         await expect(page.locator('#summary-config-feedback')).to_have_text('LLM 配置已保存。')
         assert len(llm_writes) == 1 and llm_writes[0]['api_key'] == 'fake-llm-key'
@@ -109,6 +116,13 @@ async def test_speech_configuration_ui(static_app, width):  # noqa: F811
         await expect(page.locator('#speech-provider')).to_have_value('siliconflow')
         await expect(page.locator('#speech-key')).to_have_value('')
         assert await page.evaluate('document.documentElement.scrollWidth <= innerWidth')
+        assert await page.locator('#speech-mode-hint, #speech-test-hint').count() == 0
+        for save, clear, test in [('speech-save','speech-clear','speech-test'), ('summary-config-save','summary-config-clear','summary-config-test')]:
+            a,b,c = [await page.locator('#'+ident).bounding_box() for ident in [save,clear,test]]
+            assert a['y'] + a['height'] <= b['y']
+            assert abs(b['y']-c['y']) <= 1 and b['x'] < c['x']
+            assert abs(b['width']-c['width']) <= 1
+
         style = await page.evaluate('''() => { const s=getComputedStyle(document.querySelector('#speech-state')); const l=getComputedStyle(document.querySelector('#summary-state-label')); return [s.color===l.color, s.fontSize===l.fontSize, s.fontWeight===l.fontWeight]; }''')
         assert style == [True, True, True]
         assert await page.locator('#speech-base').evaluate('(e) => e.getBoundingClientRect().width > 200')

@@ -86,6 +86,13 @@ async def list_summary_models(
     return SummaryModelsResponse(models=models)
 
 
+@router.post("/summary/test")
+async def test_summary_connection(payload: SummaryConfigRequest, request: Request):
+    service = request.app.state.container.summary_service
+    normalized = _validate_config_payload(payload, configured=service.status().configured)
+    return await service.test_connection(normalized, payload.api_key, payload.model)
+
+
 @router.post("/jobs/{job_id}/summary", response_model=VideoSummaryResponse)
 async def generate_summary(
     job_id: str,

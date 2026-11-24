@@ -276,3 +276,66 @@ async def test_list_models_rejects_empty_provider_listing() -> None:
 
     with pytest.raises(SummaryInvalidResponseError):
         await adapter.list_models(CUSTOM_BASE_URL, "list-key")
+
+
+async def test_connection_probe_uses_unsaved_model_without_changing_settings(tmp_path):
+    active = FakeClient([])
+    probe = FakeClient([completion('OK')])
+    clients = iter([active, probe])
+    path = tmp_path / 'summary.json'
+    adapter = OpenAICompatibleSummarizer(30, config_path=path,
+        client_factory=lambda *_: next(clients))
+    await adapter.configure(CUSTOM_BASE_URL, 'saved-test-key', CUSTOM_MODEL)
+    original = path.read_bytes()
+    result = await adapter.test_connection('https://probe.example/v1', 'probe-test-key', 'probe-model')
+    assert result['ok'] and result['text'] == 'OK' and result['elapsed_ms'] >= 0
+    assert probe.completions.requests[0]['model'] == 'probe-model'
+    assert probe.completions.requests[0]['messages'] == [{'role': 'user', 'content': 'Reply only OK.'}]
+    assert probe.completions.requests[0]['max_tokens'] == 64
+    assert probe.closed and not active.closed
+    assert path.read_bytes() == original and adapter.status().model == CUSTOM_MODEL
+
+
+async def test_connection_probe_never_sends_saved_key_to_another_endpoint():
+    adapter = make_adapter(FakeClient([]))
+    await configure(adapter)
+    with pytest.raises(SummaryInvalidInputError, match='当前接口'):
+        await adapter.test_connection('https://another.example/v1', '', CUSTOM_MODEL)
+
+
+async def test_connection_probe_reuses_saved_key_for_same_endpoint():
+    client = FakeClient([completion('OK')])
+    seen = []
+    adapter = OpenAICompatibleSummarizer(30, client_factory=lambda base,key: seen.append((base,key)) or client)
+    adapter._base_url = CUSTOM_BASE_URL
+    adapter._api_key = 'saved-test-key'
+    assert (await adapter.test_connection(CUSTOM_BASE_URL+'/', '', 'probe-model'))['ok']
+    assert seen == [(CUSTOM_BASE_URL, 'saved-test-key')]
+
+
+@pytest.mark.parametrize('error', [TimeoutError('private-key'), RuntimeError('private-key')])
+async def test_connection_probe_errors_do_not_leak_keys(error):
+    client = FakeClient([error])
+    adapter = make_adapter(client)
+    with pytest.raises(Exception) as result:
+        await adapter.test_connection(CUSTOM_BASE_URL, 'private-key', CUSTOM_MODEL)
+    assert 'private-key' not in str(result.value) and client.closed
+
+
+async def test_connection_probe_real_sdk_contract_with_mock_transport():
+    import httpx
+    from openai import AsyncOpenAI
+    seen = []
+    def handler(request):
+        seen.append(json.loads(request.content))
+        assert request.headers['authorization'] == 'Bearer probe-key'
+        return httpx.Response(200, json={'id': 'probe', 'object': 'chat.completion', 'created': 0,
+            'model': 'probe-model', 'choices': [{'index': 0, 'finish_reason': 'stop',
+                                                'message': {'role': 'assistant', 'content': 'OK'}}]})
+    def factory(base, key):
+        return AsyncOpenAI(base_url=base, api_key=key,
+            http_client=httpx.AsyncClient(transport=httpx.MockTransport(handler)))
+    adapter = OpenAICompatibleSummarizer(30, client_factory=factory)
+    response = await adapter.test_connection(CUSTOM_BASE_URL, 'probe-key', 'probe-model')
+    assert response['ok'] and len(seen) == 1 and seen[0]['model'] == 'probe-model'
+    assert not adapter.status().configured

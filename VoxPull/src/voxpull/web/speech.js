@@ -49,10 +49,7 @@
   const mode = () => {
     const cloud = get('provider').value !== 'local';
     get('cloud-fields').classList.toggle('hidden', !cloud);
-    get('test-hint').classList.toggle('hidden', !cloud);
-    get('mode-hint').textContent = cloud
-      ? '部分语音模型不返回时间轴；仍可使用纯文本和后续 AI 总结。'
-      : '使用本地 Whisper，不上传音频；测试连接仅检查本地识别依赖。';
+
   };
   const renderStatus = (config) => {
     saved = config;

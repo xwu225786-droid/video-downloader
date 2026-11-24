@@ -8,7 +8,7 @@
     <meta name="theme-color" content="#0e1726" media="(prefers-color-scheme: dark)"/>
     <title>素材保存与视频转写</title>
     <link rel="icon" href="/static/favicon.svg?v=20261122-tv" type="image/svg+xml"/>
-    <link rel="stylesheet" href="/static/styles.css?v=20261124-inline-ai"/>
+    <link rel="stylesheet" href="/static/styles.css?v=20261124-model-actions"/>
 </head>
 <body>
 <a class="skip-link" href="#main-content">跳到主要内容</a>
@@ -167,13 +167,11 @@
             </p>
         </div>
         </div>
-        <p id="speech-mode-hint" class="summary-config-copy"></p>
-        <p id="speech-test-hint" class="summary-config-copy">点击测试会发送内置短语音样例，可能产生少量接口费用；测试不会保存配置。</p>
         <p id="speech-feedback" class="input-error hidden" role="status"></p>
-        <div class="summary-config-actions">
+        <div class="summary-config-actions model-action-grid">
+            <button id="speech-save" class="button button-primary model-save" type="submit">保存</button>
             <button id="speech-clear" class="button button-ghost" type="button">清除配置</button>
             <button id="speech-test" class="button button-secondary" type="button">测试连接</button>
-            <button id="speech-save" class="button button-primary" type="submit">保存</button>
         </div>
     </form>
 </div>
@@ -267,9 +265,10 @@
         </div>
         <p id="summary-config-error" class="input-error hidden" role="alert"></p>
         <p id="summary-config-feedback" class="model-inline-feedback" role="status"></p>
-        <div class="summary-config-actions">
+        <div class="summary-config-actions model-action-grid">
+            <button id="summary-config-save" class="button button-primary model-save" type="submit">保存</button>
             <button id="summary-config-clear" class="button button-ghost" type="button">清除配置</button>
-            <button id="summary-config-save" class="button button-primary" type="submit">保存</button>
+            <button id="summary-config-test" class="button button-secondary" type="button">测试连接</button>
         </div>
     </form>
 </div>
@@ -811,8 +810,8 @@
     </div>
 </dialog>
 
-<script src="/static/app.js?v=20261124-ai-copy-trim" defer></script>
+<script src="/static/app.js?v=20261124-model-actions" defer></script>
 <script src="/static/feishu.js?v=20261108-1" defer></script>
-<script src="/static/speech.js?v=20261124-ai-copy-trim" defer></script>
+<script src="/static/speech.js?v=20261124-model-actions" defer></script>
 </body>
 </html>

@@ -77,3 +77,20 @@ async def test_model_probe_api_is_independent_of_saved_configuration(tmp_path):
             assert 'test-key' not in response.text
             assert (await client.post('/api/transcription/models', json=config)).json()['models'] == ['whisper-test']
             assert (await client.get('/api/transcription/config')).json() == original
+
+
+async def test_llm_connection_probe_api_without_saving(tmp_path):
+    from types import SimpleNamespace
+    app = create_app(make_settings(tmp_path))
+    async with app.router.lifespan_context(app):
+        provider = app.state.container.summary_provider
+        response = SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content='OK'))])
+        probe = SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=AsyncMock(return_value=response))), close=AsyncMock())
+        provider._client_factory = lambda *_: probe
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app),base_url='http://test') as client:
+            before = (await client.get('/api/summary/config')).json()
+            speech_before = (await client.get('/api/transcription/config')).json()
+            response = await client.post('/api/summary/test',json={'base_url':'https://probe.example/v1', 'api_key':'test-key', 'model':'test-model'})
+            assert response.status_code == 200 and response.json()['ok'] and response.json()['text'] == 'OK'
+            assert (await client.get('/api/summary/config')).json() == before
+            assert (await client.get('/api/transcription/config')).json() == speech_before
