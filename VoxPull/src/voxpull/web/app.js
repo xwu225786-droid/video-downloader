@@ -149,7 +149,6 @@ const elements = {
   summaryService: document.querySelector("#summary-state"),
   summaryServiceLabel: document.querySelector("#summary-state-label"),
   summaryHint: document.querySelector("#summary-hint"),
-  summaryConfigOpen: document.querySelector("#summary-config-open"),
   summaryView: document.querySelector("#summary-view"),
   summaryEmpty: document.querySelector("#summary-empty"),
   summaryProgress: document.querySelector("#summary-progress"),
@@ -180,7 +179,6 @@ const elements = {
   summaryConfigError: document.querySelector("#summary-config-error"),
   summaryConfigClear: document.querySelector("#summary-config-clear"),
   summaryConfigSave: document.querySelector("#summary-config-save"),
-  summaryConfigClose: document.querySelector("#summary-config-close"),
   editor: document.querySelector("#transcript-editor"),
   textView: document.querySelector("#text-view"),
   timelineView: document.querySelector("#timeline-view"),
@@ -263,6 +261,7 @@ const selectedQueueJobs = new Set();
 let queueSelectionMode = false;
 const queuePublicationDates = new Map();
 const queuePublicationLoads = new Map();
+let summaryInlineInitialized = false;
 let summaryServiceStatus = { configured: false, base_url: "", model: "" };
 let authBasePromise = null;
 let authBrowserConsoleUrl = null;
@@ -518,6 +517,7 @@ function setAuthActionBusy(busy) {
 elements.refreshSystem.addEventListener("click", loadSystem);
 elements.settingsOpen.addEventListener("click", () => {
   elements.settingsDialog.showModal();
+  if (document.querySelector("#llm-settings").open) loadSummaryModels(elements.summaryConfigModel.value);
   elements.settingsOpen.setAttribute("aria-expanded", "true");
 });
 elements.settingsClose.addEventListener("click", () => elements.settingsDialog.close());
@@ -3672,11 +3672,9 @@ function updateSummaryServiceUi() {
   elements.summaryHint.textContent = configured
     ? `使用 ${model} 生成总结时，文案将发送至该服务。`
     : "配置 OpenAI 兼容接口后，可在结果页生成视频内容总结。";
-  elements.summaryConfigOpen.textContent = configured ? "修改 LLM 配置" : "配置 LLM 接口";
-  elements.summaryConfigOpen.classList.toggle("is-ready-action", configured);
 }
 
-async function refreshSummaryServiceStatus() {
+async function refreshSummaryServiceStatus(resetForm = false) {
   try {
     const status = await api("/api/summary/config");
     summaryServiceStatus = {
@@ -3688,6 +3686,7 @@ async function refreshSummaryServiceStatus() {
     summaryServiceStatus = { configured: false, base_url: "", model: "" };
   }
   updateSummaryServiceUi();
+  if (!summaryInlineInitialized || resetForm) { populateSummaryConfig(); summaryInlineInitialized = true; }
 }
 
 async function migrateLegacySummaryConfig() {
@@ -3851,7 +3850,7 @@ async function loadSummaryModels(selectedModel = "") {
   }
 }
 
-function openSummaryConfigDialog() {
+function populateSummaryConfig() {
   const { configured, base_url: baseUrl, model } = summaryServiceStatus;
   elements.summaryConfigBase.value = baseUrl || "";
   elements.summaryConfigKey.value = "";
@@ -3862,12 +3861,18 @@ function openSummaryConfigDialog() {
   elements.summaryConfigKeyToggle.setAttribute("aria-label", "显示 API Key");
   setSummaryModelOptions(model ? [model] : [], model || "");
   setSummaryConfigError();
-  elements.summaryConfigDialog.showModal();
-  elements.summaryConfigBase.focus();
-  loadSummaryModels(model || "");
 }
 
-elements.summaryConfigOpen.addEventListener("click", openSummaryConfigDialog);
+function openSummaryConfigDialog() {
+  if (!elements.settingsDialog.open) elements.settingsDialog.showModal();
+  document.querySelector('#llm-settings').open = true;
+  elements.summaryConfigBase.scrollIntoView({ block: 'nearest' });
+  elements.summaryConfigBase.focus();
+  loadSummaryModels(elements.summaryConfigModel.value);
+}
+document.querySelector('#llm-settings').addEventListener('toggle', () => {
+  if (document.querySelector('#llm-settings').open) loadSummaryModels(elements.summaryConfigModel.value);
+});
 elements.summaryPresets.forEach((button) => {
   button.addEventListener("click", () => {
     elements.summaryConfigBase.value = button.dataset.baseUrl;
@@ -3890,11 +3895,6 @@ elements.summaryConfigKeyToggle.addEventListener("click", () => {
 });
 elements.summaryConfigBase.addEventListener("blur", () => loadSummaryModels());
 elements.summaryConfigKey.addEventListener("blur", () => loadSummaryModels(elements.summaryConfigModel.value));
-elements.summaryConfigClose.addEventListener("click", () => {
-  summaryModelsController?.abort();
-  closeSummaryModelList();
-  elements.summaryConfigDialog.close();
-});
 elements.summaryConfigModelTrigger.addEventListener("click", () => {
   if (elements.summaryConfigModelTrigger.getAttribute("aria-expanded") === "true") {
     closeSummaryModelList();
@@ -3932,6 +3932,8 @@ document.addEventListener("click", (event) => {
     closeSummaryModelList();
   }
 });
+elements.summaryConfigForm.addEventListener("input", () => { document.querySelector("#summary-config-feedback").textContent = ""; });
+elements.summaryConfigModelList.addEventListener("click", () => { document.querySelector("#summary-config-feedback").textContent = ""; });
 elements.summaryConfigForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   const baseUrl = elements.summaryConfigBase.value.trim().replace(/\/+$/, "");
@@ -3959,9 +3961,9 @@ elements.summaryConfigForm.addEventListener("submit", async (event) => {
       method: "PUT",
       body: JSON.stringify({ base_url: baseUrl, api_key: apiKey, model }),
     });
-    await refreshSummaryServiceStatus();
+    await refreshSummaryServiceStatus(true);
     setSummaryConfigError();
-    elements.summaryConfigDialog.close();
+    document.querySelector("#summary-config-feedback").textContent = "LLM 配置已保存。";
   } catch (error) {
     setSummaryConfigError(error.message || "保存失败，请稍后重试。");
   } finally {
@@ -3972,8 +3974,8 @@ elements.summaryConfigClear.addEventListener("click", async () => {
   elements.summaryConfigClear.disabled = true;
   try {
     await api("/api/summary/config", { method: "DELETE" });
-    await refreshSummaryServiceStatus();
-    elements.summaryConfigDialog.close();
+    await refreshSummaryServiceStatus(true);
+    document.querySelector("#summary-config-feedback").textContent = "已清除 LLM 配置。";
   } catch (error) {
     setSummaryConfigError(error.message || "清除失败，请稍后重试。");
   } finally {

@@ -1560,7 +1560,6 @@ body:has(#material-tag-delete-dialog[open]) { overflow: hidden; }
 .ai-model-card[open] > summary::before { transform: rotate(45deg); }
 .ai-model-card > summary:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 5px; border-radius: 3px; }
 .ai-model-title { flex: 1; min-width: 0; font-size: 14px; font-weight: 700; }
-.ai-model-card > summary > #speech-state { color: var(--color-text-secondary); font-size: 12px; font-weight: 600; }
 .ai-model-card > summary > .auth-state { flex-shrink: 0; }
 .ai-model-description, .ai-model-note, .ai-model-card .feishu-note { margin: 12px 0 0; color: var(--color-text-secondary); font-size: 12px; line-height: 1.7; overflow-wrap: anywhere; }
 @media (max-width: 480px) { .ai-model-card { padding: 14px; } .ai-model-card > summary { gap: 8px; } }
@@ -1568,3 +1567,12 @@ body:has(#material-tag-delete-dialog[open]) { overflow: hidden; }
 .summary-config { max-height: calc(100dvh - 32px); overflow-y: auto; }
 #speech-dialog .summary-config-actions { flex-wrap: wrap; }
 #speech-dialog .summary-config-actions .button { flex: 1 0 auto; }
+
+/* Model forms are configured directly inside Settings, without nested dialogs. */
+.model-inline-config { width: 100%; min-width: 0; }
+.model-inline-config form { margin-top: 14px; padding: 0; }
+.model-inline-config .summary-config-actions { flex-wrap: wrap; justify-content: flex-end; }
+.model-inline-config .summary-config-actions .button { flex: 1 0 auto; }
+.model-inline-feedback { margin: 12px 0 0; color: var(--color-status-success); font-size: 12px; line-height: 1.6; }
+.model-inline-feedback:empty { display: none; }
+#speech-state, #summary-state-label { color: inherit; font-size: inherit; font-weight: inherit; }

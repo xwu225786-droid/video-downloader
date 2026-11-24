@@ -66,9 +66,10 @@ async def test_speech_configuration_ui(static_app, width):  # noqa: F811
         assert await page.locator('.ai-model-settings #llm-settings').count() == 1
         await expect(page.locator('#speech-settings summary')).to_contain_text('语音模型')
         await expect(page.locator('#llm-settings summary')).to_contain_text('LLM 处理模型')
-        await page.locator('#speech-settings summary').click()
-        await page.locator('#speech-open').click()
         await expect(page.locator('#speech-dialog')).to_be_visible()
+        await expect(page.locator('#summary-config-dialog')).to_be_visible()
+        assert await page.locator('#settings-dialog button').filter(has_text='修改语音配置').count() == 0
+        assert await page.locator('#settings-dialog button').filter(has_text='修改 LLM 配置').count() == 0
         assert await page.locator('#speech-dialog').get_attribute('class') == await page.locator('#summary-config-dialog').get_attribute('class')
         await expect(page.locator('#speech-cloud-fields')).to_be_hidden()
         await page.locator('#speech-provider').select_option('siliconflow')
@@ -87,12 +88,11 @@ async def test_speech_configuration_ui(static_app, width):  # noqa: F811
         assert requests == []
         probe_failure = False
         await page.locator('#speech-save').click()
-        await expect(page.locator('#speech-dialog')).not_to_be_visible()
+        await expect(page.locator('#speech-feedback')).to_contain_text('配置已保存')
         await expect(page.locator('#speech-key')).to_have_value('')
         assert requests[0]['api_key'] == 'fake-test-key'
         assert llm_writes == []
-        await page.locator('#llm-settings summary').click()
-        await page.locator('#summary-config-open').click()
+        await expect(page.locator('#summary-config-base')).to_be_visible()
         await page.locator('#summary-config-base').fill('https://llm.example/v1')
         await page.locator('#summary-config-key').fill('fake-llm-key')
         await page.locator('#summary-config-key').press('Tab')
@@ -100,22 +100,22 @@ async def test_speech_configuration_ui(static_app, width):  # noqa: F811
         await page.locator('#summary-config-model-trigger').click()
         await page.locator('#summary-config-model-list .summary-model-option').filter(has_text='llm-test-model').click()
         await page.locator('#summary-config-save').click()
-        await expect(page.locator('#summary-config-dialog')).not_to_be_visible()
+        await expect(page.locator('#summary-config-feedback')).to_have_text('LLM 配置已保存。')
         assert len(llm_writes) == 1 and llm_writes[0]['api_key'] == 'fake-llm-key'
         assert len(requests) == 1, 'LLM save must not update speech configuration'
         await expect(page.locator('#speech-model')).to_have_value('FunAudioLLM/SenseVoiceSmall')
         await page.reload()
         await page.locator('#settings-open').click()
-        await page.locator('#speech-settings summary').click()
-        await page.locator('#speech-open').click()
         await expect(page.locator('#speech-provider')).to_have_value('siliconflow')
         await expect(page.locator('#speech-key')).to_have_value('')
         assert await page.evaluate('document.documentElement.scrollWidth <= innerWidth')
+        style = await page.evaluate('''() => { const s=getComputedStyle(document.querySelector('#speech-state')); const l=getComputedStyle(document.querySelector('#summary-state-label')); return [s.color===l.color, s.fontSize===l.fontSize, s.fontWeight===l.fontWeight]; }''')
+        assert style == [True, True, True]
         assert await page.locator('#speech-base').evaluate('(e) => e.getBoundingClientRect().width > 200')
         await page.locator('#speech-dialog').screenshot(path=f'/tmp/voxpull-ai-settings-{width}.png')
         page.once('dialog', lambda dialog: dialog.accept())
         await page.locator('#speech-clear').click()
-        await expect(page.locator('#speech-dialog')).not_to_be_visible()
+        await expect(page.locator('#speech-feedback')).to_contain_text('恢复本地 Whisper')
         assert saved['provider'] == 'local'
         assert llm_config['configured'] and llm_config['model'] == 'llm-test-model'
         assert errors == []

@@ -58,7 +58,7 @@
     saved = config;
     get('state').textContent = !config.cloud ? '本地 Whisper' : '已配置';
     get('hint').textContent = !config.cloud ? '使用本地 Whisper，音频不上传到语音识别服务。' : `使用 ${config.model} 识别语音，音频将发送至该服务。`;
-    get('open').textContent = config.cloud ? '修改语音配置' : '配置语音接口';
+    populate();
   };
   const normalizeBase = (value) => value.trim().replace(/\/+$/, '').replace(/\/audio\/transcriptions$/, '');
   const loadModels = async () => {
@@ -81,7 +81,7 @@
       if (error.name !== 'AbortError') status(`获取模型失败，已保留当前模型；也可手动输入。${error.message}`, 'error');
     }
   };
-  get('open').addEventListener('click', () => {
+  const populate = () => {
     revision += 1; manual = false;
     get('provider').value = saved.provider;
     get('base').value = saved.base_url || 'https://api.siliconflow.cn/v1';
@@ -91,8 +91,10 @@
     get('model-custom').classList.add('hidden'); get('model-trigger').classList.remove('hidden');
     get('model-manual').textContent = '手动输入';
     setModels([], saved.model || 'FunAudioLLM/SenseVoiceSmall');
-    feedback(); closeList(); mode(); dialog.showModal(); void loadModels();
-  });
+    feedback(); closeList(); mode();
+  };
+  document.getElementById('settings-open').addEventListener('click', () => { if (get('settings').open) void loadModels(); });
+  get('settings').addEventListener('toggle', () => { if (get('settings').open) void loadModels(); });
   get('provider').addEventListener('change', () => {
     if (get('provider').value === 'siliconflow') {
       get('base').value = 'https://api.siliconflow.cn/v1';
@@ -142,23 +144,22 @@
     get(id).addEventListener('input', () => { revision += 1; feedback(); });
   }
   get('base').addEventListener('blur', loadModels); get('key').addEventListener('blur', loadModels);
-  get('close').addEventListener('click', () => dialog.close());
-  dialog.addEventListener('close', () => { revision += 1; modelsController?.abort(); get('key').value = ''; closeList(); });
+  document.getElementById('settings-dialog').addEventListener('close', () => { revision += 1; modelsController?.abort(); get('key').value = ''; closeList(); });
   const busy = (value) => { for (const id of ['save', 'clear', 'test']) get(id).disabled = value; };
   get('test').addEventListener('click', async () => {
     busy(true); feedback('正在测试连接…'); const version = revision;
     try {
       const result = await api('/api/transcription/test', { method: 'POST', body: JSON.stringify(payload()) });
-      if (version !== revision || !dialog.open) return;
+      if (version !== revision || !document.getElementById('settings-dialog').open) return;
       feedback(`${result.message}${result.elapsed_ms != null ? `（${result.elapsed_ms} ms）` : ''}${result.text ? `：${result.text}` : ''}`);
-    } catch (error) { if (version === revision && dialog.open) feedback(`测试失败：${error.message}`, true); }
+    } catch (error) { if (version === revision && document.getElementById('settings-dialog').open) feedback(`测试失败：${error.message}`, true); }
     finally { busy(false); }
   });
   get('form').addEventListener('submit', async (event) => {
     event.preventDefault(); busy(true);
     try {
       const config = await api('/api/transcription/config', { method: 'PUT', body: JSON.stringify(payload()) });
-      renderStatus(config); dialog.close(); void loadSystem();
+      renderStatus(config); feedback("语音模型配置已保存。"); void loadSystem();
     } catch (error) { feedback(error.message, true); }
     finally { busy(false); }
   });
@@ -166,10 +167,10 @@
     if (!window.confirm('清除语音接口配置并恢复本地 Whisper？')) return;
     busy(true);
     try { await api('/api/transcription/config', { method: 'DELETE' });
-      renderStatus(await api('/api/transcription/config')); dialog.close(); void loadSystem();
+      renderStatus(await api('/api/transcription/config')); feedback('已清除语音配置，恢复本地 Whisper。'); void loadSystem();
     } catch (error) { feedback(error.message, true); } finally { busy(false); }
   });
   api('/api/transcription/config').then(renderStatus).catch((error) => {
-    get('hint').textContent = `读取配置失败：${error.message}`; get('open').disabled = true;
+    get('hint').textContent = `读取配置失败：${error.message}`; get('save').disabled = true;
   });
 })();

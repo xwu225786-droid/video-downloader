@@ -8,7 +8,7 @@
     <meta name="theme-color" content="#0e1726" media="(prefers-color-scheme: dark)"/>
     <title>素材保存与视频转写</title>
     <link rel="icon" href="/static/favicon.svg?v=20261122-tv" type="image/svg+xml"/>
-    <link rel="stylesheet" href="/static/styles.css?v=20261123-model-dialog"/>
+    <link rel="stylesheet" href="/static/styles.css?v=20261124-inline-ai"/>
 </head>
 <body>
 <a class="skip-link" href="#main-content">跳到主要内容</a>
@@ -82,15 +82,108 @@
                         <div class="auth-title"><strong id="ai-config-title">AI 配置</strong></div>
                     </div>
                     <p class="ai-config-intro">语音模型负责转写，LLM 处理模型负责 AI 总结。两项可分别设置服务、模型和 API Key，独立保存。</p>
-                    <details class="ai-model-card" id="speech-settings">
-                        <summary><span class="ai-model-title">语音模型</span> <span id="speech-state" aria-live="polite">本地 Whisper</span></summary>
+                    <details class="ai-model-card" id="speech-settings" open>
+                        <summary><span class="ai-model-title">语音模型</span> <span id="speech-status" class="auth-state" aria-live="polite"><span class="status-dot" aria-hidden="true"></span><span id="speech-state">本地 Whisper</span></span></summary>
                         <p class="ai-model-description">用于语音转文字，与 LLM 处理模型的接口和密钥分别保存。</p>
                         <p id="speech-hint" class="ai-model-note" aria-live="polite">当前使用本地 Whisper。</p>
-                        <div class="button-row auth-actions">
-                            <button id="speech-open" class="button button-secondary" type="button">配置语音接口</button>
-                        </div>
+                        <div id="speech-dialog" class="model-inline-config">
+<form id="speech-form" novalidate>
+        <p class="summary-config-copy">
+            用于语音转文字，独立于 LLM 配置。云端识别会上传音频，密钥仅保存在本机。
+        </p>
+        <div class="summary-config-field">
+            <label for="speech-provider">识别方式</label>
+            <select id="speech-provider"><option value="local">本地 Whisper（离线）</option><option value="siliconflow">硅基流动</option><option value="compatible">其他兼容接口</option></select>
+        </div>
+        <div id="speech-cloud-fields">        <div class="summary-config-field">
+            <div class="summary-config-label-row">
+                <label for="speech-base">接口地址</label>
+                <div class="summary-config-presets" role="group" aria-label="常用语音接口预设">
+                    <button type="button" class="summary-preset" data-provider="siliconflow" data-base-url="https://api.siliconflow.cn/v1" data-model="FunAudioLLM/SenseVoiceSmall">硅基流动</button>
+                    <button type="button" class="summary-preset" data-provider="compatible" data-base-url="https://api.openai.com/v1" data-model="whisper-1">OpenAI</button>
+                </div>
+            </div>
+            <input
+                    id="speech-base"
+                    name="base_url"
+                    type="url"
+                    placeholder="https://api.siliconflow.cn/v1"
+                    autocomplete="off"
+                    spellcheck="false"
+            />
+        </div>
+        <div class="summary-config-field">
+            <label for="speech-key">API Key</label>
+            <div class="summary-config-key-wrap">
+                <input
+                        id="speech-key"
+                        name="api_key"
+                        type="password"
+                        placeholder="sk-..."
+                        autocomplete="off"
+                />
+                <button
+                        id="speech-key-toggle" class="model-key-toggle"
+                        type="button"
+                        aria-pressed="false"
+                        aria-label="显示 API Key"
+                >显示</button>
+            </div>
+        </div>
+        <div class="summary-config-field">
+            <div class="summary-config-label-row"><label id="speech-model-label" for="speech-model-trigger">模型</label><button id="speech-model-manual" class="summary-preset" type="button">手动输入</button></div>
+            <div class="summary-config-select-wrap">
+                <select
+                        id="speech-model"
+                        name="model"
+                        hidden
+                        aria-hidden="true"
+                        tabindex="-1"
+                        disabled
+                >
+                    <option value="">请先填写接口地址和 API Key</option>
+                </select>
+                <button
+                        id="speech-model-trigger"
+                        class="summary-config-model-trigger"
+                        type="button"
+                        aria-haspopup="listbox"
+                        aria-expanded="false"
+                        aria-controls="speech-model-list"
+                        aria-labelledby="speech-model-label speech-model-value"
+                        aria-describedby="speech-model-status"
+                        disabled
+                >
+                    <span class="summary-model-indicator" aria-hidden="true"></span>
+                    <span id="speech-model-value" class="summary-config-model-value">请先获取模型</span>
+                    <span class="summary-model-chevron" aria-hidden="true"></span>
+                </button>
+                <div
+                        id="speech-model-list"
+                        class="summary-config-model-list hidden"
+                        role="listbox"
+                        aria-labelledby="speech-model-label"
+                ></div>
+            </div>
+            <input id="speech-model-custom" class="hidden" maxlength="256" aria-label="手动输入语音模型名称" placeholder="填写语音识别模型名称" autocomplete="off"/>
+            <p id="speech-model-status" class="summary-config-model-status" data-state="idle" aria-live="polite">
+                <span class="summary-status-dot" aria-hidden="true"></span>
+                <span class="summary-status-text">填写接口地址和 API Key 后，将自动获取可用模型。</span>
+            </p>
+        </div>
+        </div>
+        <p id="speech-mode-hint" class="summary-config-copy"></p>
+        <p id="speech-test-hint" class="summary-config-copy">点击测试会发送内置短语音样例，可能产生少量接口费用；测试不会保存配置。</p>
+        <p id="speech-feedback" class="input-error hidden" role="status"></p>
+        <div class="summary-config-actions">
+            <button id="speech-clear" class="button button-ghost" type="button">清除配置</button>
+            <button id="speech-test" class="button button-secondary" type="button">测试连接</button>
+            <button id="speech-save" class="button button-primary" type="submit">保存</button>
+        </div>
+    </form>
+</div>
                     </details>
-                    <details class="ai-model-card" id="llm-settings">
+                    <details class="ai-model-card" id="llm-settings" open>
                         <summary>
                             <span class="ai-model-title">LLM 处理模型</span>
                             <span id="summary-state" class="auth-state has-error" aria-live="polite">
@@ -100,9 +193,96 @@
                         </summary>
                         <p class="ai-model-description">用于提炼文案、生成 AI 总结，与语音模型的接口和密钥分别保存。</p>
                         <p id="summary-hint" class="ai-model-note" aria-live="polite">配置 OpenAI 兼容接口后，可生成视频内容总结。</p>
-                        <div class="button-row auth-actions">
-                            <button id="summary-config-open" class="button button-secondary" type="button">配置 LLM 接口</button>
-                        </div>
+                        <div id="summary-config-dialog" class="model-inline-config">
+<form id="summary-config-form" novalidate>
+        <p class="summary-config-copy">
+            用于 AI 总结，独立于语音模型配置。支持 OpenAI 兼容接口；生成总结时会发送转写文案，凭据仅保存在本机。
+        </p>
+        <div class="summary-config-field">
+            <div class="summary-config-label-row">
+                <label for="summary-config-base">接口地址</label>
+                <div class="summary-config-presets" role="group" aria-label="常用接口预设">
+                    <button type="button" class="summary-preset" data-base-url="https://api.deepseek.com">DeepSeek</button>
+                    <button type="button" class="summary-preset" data-base-url="https://api.openai.com/v1">OpenAI</button>
+                    <button type="button" class="summary-preset" data-base-url="https://dashscope.aliyuncs.com/compatible-mode/v1">通义千问</button>
+                    <button type="button" class="summary-preset" data-base-url="https://open.bigmodel.cn/api/paas/v4">智谱 AI</button>
+                </div>
+            </div>
+            <input
+                    id="summary-config-base"
+                    name="base_url"
+                    type="url"
+                    placeholder="https://api.deepseek.com"
+                    autocomplete="off"
+                    spellcheck="false"
+            />
+        </div>
+        <div class="summary-config-field">
+            <label for="summary-config-key">API Key</label>
+            <div class="summary-config-key-wrap">
+                <input
+                        id="summary-config-key"
+                        name="api_key"
+                        type="password"
+                        placeholder="sk-..."
+                        autocomplete="off"
+                />
+                <button
+                        id="summary-config-key-toggle" class="model-key-toggle"
+                        type="button"
+                        aria-pressed="false"
+                        aria-label="显示 API Key"
+                >显示</button>
+            </div>
+        </div>
+        <div class="summary-config-field">
+            <label id="summary-config-model-label" for="summary-config-model-trigger">模型</label>
+            <div class="summary-config-select-wrap">
+                <select
+                        id="summary-config-model"
+                        name="model"
+                        hidden
+                        aria-hidden="true"
+                        tabindex="-1"
+                        disabled
+                >
+                    <option value="">请先填写接口地址和 API Key</option>
+                </select>
+                <button
+                        id="summary-config-model-trigger"
+                        class="summary-config-model-trigger"
+                        type="button"
+                        aria-haspopup="listbox"
+                        aria-expanded="false"
+                        aria-controls="summary-config-model-list"
+                        aria-labelledby="summary-config-model-label summary-config-model-value"
+                        aria-describedby="summary-config-model-status"
+                        disabled
+                >
+                    <span class="summary-model-indicator" aria-hidden="true"></span>
+                    <span id="summary-config-model-value" class="summary-config-model-value">请先获取模型</span>
+                    <span class="summary-model-chevron" aria-hidden="true"></span>
+                </button>
+                <div
+                        id="summary-config-model-list"
+                        class="summary-config-model-list hidden"
+                        role="listbox"
+                        aria-labelledby="summary-config-model-label"
+                ></div>
+            </div>
+            <p id="summary-config-model-status" class="summary-config-model-status" data-state="idle" aria-live="polite">
+                <span class="summary-status-dot" aria-hidden="true"></span>
+                <span class="summary-status-text">填写接口地址和 API Key 后，将自动获取可用模型。</span>
+            </p>
+        </div>
+        <p id="summary-config-error" class="input-error hidden" role="alert"></p>
+        <p id="summary-config-feedback" class="model-inline-feedback" role="status"></p>
+        <div class="summary-config-actions">
+            <button id="summary-config-clear" class="button button-ghost" type="button">清除配置</button>
+            <button id="summary-config-save" class="button button-primary" type="submit">保存</button>
+        </div>
+    </form>
+</div>
                     </details>
                 </section>
             </div>
@@ -552,212 +732,9 @@
     </div>
 </dialog>
 
-<dialog
-        id="summary-config-dialog"
-        class="summary-config"
-        aria-labelledby="summary-config-title"
->
-    <form id="summary-config-form" novalidate>
-        <header class="summary-config-header">
-            <h2 id="summary-config-title">配置 LLM 处理模型</h2>
-            <button id="summary-config-close" class="summary-config-close" type="button" aria-label="关闭配置窗口">
-                <span aria-hidden="true">×</span>
-            </button>
-        </header>
-        <p class="summary-config-copy">
-            用于 AI 总结，独立于语音模型配置。支持 OpenAI 兼容接口；生成总结时会发送转写文案，凭据仅保存在本机。
-        </p>
-        <div class="summary-config-field">
-            <div class="summary-config-label-row">
-                <label for="summary-config-base">接口地址</label>
-                <div class="summary-config-presets" role="group" aria-label="常用接口预设">
-                    <button type="button" class="summary-preset" data-base-url="https://api.deepseek.com">DeepSeek</button>
-                    <button type="button" class="summary-preset" data-base-url="https://api.openai.com/v1">OpenAI</button>
-                    <button type="button" class="summary-preset" data-base-url="https://dashscope.aliyuncs.com/compatible-mode/v1">通义千问</button>
-                    <button type="button" class="summary-preset" data-base-url="https://open.bigmodel.cn/api/paas/v4">智谱 AI</button>
-                </div>
-            </div>
-            <input
-                    id="summary-config-base"
-                    name="base_url"
-                    type="url"
-                    placeholder="https://api.deepseek.com"
-                    autocomplete="off"
-                    spellcheck="false"
-            />
-        </div>
-        <div class="summary-config-field">
-            <label for="summary-config-key">API Key</label>
-            <div class="summary-config-key-wrap">
-                <input
-                        id="summary-config-key"
-                        name="api_key"
-                        type="password"
-                        placeholder="sk-..."
-                        autocomplete="off"
-                />
-                <button
-                        id="summary-config-key-toggle" class="model-key-toggle"
-                        type="button"
-                        aria-pressed="false"
-                        aria-label="显示 API Key"
-                >显示</button>
-            </div>
-        </div>
-        <div class="summary-config-field">
-            <label id="summary-config-model-label" for="summary-config-model-trigger">模型</label>
-            <div class="summary-config-select-wrap">
-                <select
-                        id="summary-config-model"
-                        name="model"
-                        hidden
-                        aria-hidden="true"
-                        tabindex="-1"
-                        disabled
-                >
-                    <option value="">请先填写接口地址和 API Key</option>
-                </select>
-                <button
-                        id="summary-config-model-trigger"
-                        class="summary-config-model-trigger"
-                        type="button"
-                        aria-haspopup="listbox"
-                        aria-expanded="false"
-                        aria-controls="summary-config-model-list"
-                        aria-labelledby="summary-config-model-label summary-config-model-value"
-                        aria-describedby="summary-config-model-status"
-                        disabled
-                >
-                    <span class="summary-model-indicator" aria-hidden="true"></span>
-                    <span id="summary-config-model-value" class="summary-config-model-value">请先获取模型</span>
-                    <span class="summary-model-chevron" aria-hidden="true"></span>
-                </button>
-                <div
-                        id="summary-config-model-list"
-                        class="summary-config-model-list hidden"
-                        role="listbox"
-                        aria-labelledby="summary-config-model-label"
-                ></div>
-            </div>
-            <p id="summary-config-model-status" class="summary-config-model-status" data-state="idle" aria-live="polite">
-                <span class="summary-status-dot" aria-hidden="true"></span>
-                <span class="summary-status-text">填写接口地址和 API Key 后，将自动获取可用模型。</span>
-            </p>
-        </div>
-        <p id="summary-config-error" class="input-error hidden" role="alert"></p>
-        <div class="summary-config-actions">
-            <button id="summary-config-clear" class="button button-ghost" type="button">清除配置</button>
-            <button id="summary-config-save" class="button button-primary" type="submit">保存</button>
-        </div>
-    </form>
-</dialog>
 
-<dialog
-        id="speech-dialog"
-        class="summary-config"
-        aria-labelledby="speech-title"
->
-    <form id="speech-form" novalidate>
-        <header class="summary-config-header">
-            <h2 id="speech-title">配置语音模型</h2>
-            <button id="speech-close" class="summary-config-close" type="button" aria-label="关闭配置窗口">
-                <span aria-hidden="true">×</span>
-            </button>
-        </header>
-        <p class="summary-config-copy">
-            用于语音转文字，独立于 LLM 配置。云端识别会上传音频，密钥仅保存在本机。
-        </p>
-        <div class="summary-config-field">
-            <label for="speech-provider">识别方式</label>
-            <select id="speech-provider"><option value="local">本地 Whisper（离线）</option><option value="siliconflow">硅基流动</option><option value="compatible">其他兼容接口</option></select>
-        </div>
-        <div id="speech-cloud-fields">        <div class="summary-config-field">
-            <div class="summary-config-label-row">
-                <label for="speech-base">接口地址</label>
-                <div class="summary-config-presets" role="group" aria-label="常用语音接口预设">
-                    <button type="button" class="summary-preset" data-provider="siliconflow" data-base-url="https://api.siliconflow.cn/v1" data-model="FunAudioLLM/SenseVoiceSmall">硅基流动</button>
-                    <button type="button" class="summary-preset" data-provider="compatible" data-base-url="https://api.openai.com/v1" data-model="whisper-1">OpenAI</button>
-                </div>
-            </div>
-            <input
-                    id="speech-base"
-                    name="base_url"
-                    type="url"
-                    placeholder="https://api.siliconflow.cn/v1"
-                    autocomplete="off"
-                    spellcheck="false"
-            />
-        </div>
-        <div class="summary-config-field">
-            <label for="speech-key">API Key</label>
-            <div class="summary-config-key-wrap">
-                <input
-                        id="speech-key"
-                        name="api_key"
-                        type="password"
-                        placeholder="sk-..."
-                        autocomplete="off"
-                />
-                <button
-                        id="speech-key-toggle" class="model-key-toggle"
-                        type="button"
-                        aria-pressed="false"
-                        aria-label="显示 API Key"
-                >显示</button>
-            </div>
-        </div>
-        <div class="summary-config-field">
-            <div class="summary-config-label-row"><label id="speech-model-label" for="speech-model-trigger">模型</label><button id="speech-model-manual" class="summary-preset" type="button">手动输入</button></div>
-            <div class="summary-config-select-wrap">
-                <select
-                        id="speech-model"
-                        name="model"
-                        hidden
-                        aria-hidden="true"
-                        tabindex="-1"
-                        disabled
-                >
-                    <option value="">请先填写接口地址和 API Key</option>
-                </select>
-                <button
-                        id="speech-model-trigger"
-                        class="summary-config-model-trigger"
-                        type="button"
-                        aria-haspopup="listbox"
-                        aria-expanded="false"
-                        aria-controls="speech-model-list"
-                        aria-labelledby="speech-model-label speech-model-value"
-                        aria-describedby="speech-model-status"
-                        disabled
-                >
-                    <span class="summary-model-indicator" aria-hidden="true"></span>
-                    <span id="speech-model-value" class="summary-config-model-value">请先获取模型</span>
-                    <span class="summary-model-chevron" aria-hidden="true"></span>
-                </button>
-                <div
-                        id="speech-model-list"
-                        class="summary-config-model-list hidden"
-                        role="listbox"
-                        aria-labelledby="speech-model-label"
-                ></div>
-            </div>
-            <input id="speech-model-custom" class="hidden" maxlength="256" aria-label="手动输入语音模型名称" placeholder="填写语音识别模型名称" autocomplete="off"/>
-            <p id="speech-model-status" class="summary-config-model-status" data-state="idle" aria-live="polite">
-                <span class="summary-status-dot" aria-hidden="true"></span>
-                <span class="summary-status-text">填写接口地址和 API Key 后，将自动获取可用模型。</span>
-            </p>
-        </div>
-        </div>
-        <p id="speech-mode-hint" class="summary-config-copy"></p>
-        <p id="speech-test-hint" class="summary-config-copy">点击测试会发送内置短语音样例，可能产生少量接口费用；测试不会保存配置。</p>
-        <p id="speech-feedback" class="input-error hidden" role="status"></p>
-        <div class="summary-config-actions">
-            <button id="speech-clear" class="button button-ghost" type="button">清除配置</button>
-            <button id="speech-test" class="button button-secondary" type="button">测试连接</button>
-            <button id="speech-save" class="button button-primary" type="submit">保存</button>
-        </div>
-    </form>
-</dialog>
+
+
 
 <dialog id="material-tag-dialog" class="material-tag-dialog" aria-labelledby="material-tag-title">
     <form id="material-tag-form">
@@ -844,8 +821,8 @@
     </div>
 </dialog>
 
-<script src="/static/app.js?v=20261123-model-dialog" defer></script>
+<script src="/static/app.js?v=20261124-inline-ai" defer></script>
 <script src="/static/feishu.js?v=20261108-1" defer></script>
-<script src="/static/speech.js?v=20261123-model-dialog" defer></script>
+<script src="/static/speech.js?v=20261124-inline-ai" defer></script>
 </body>
 </html>
