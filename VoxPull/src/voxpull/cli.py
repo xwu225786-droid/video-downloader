@@ -428,12 +428,9 @@ def _uninstall_playwright() -> bool:
 
 
 def _remove_installation_files() -> bool:
-    model_path = PROJECT_ROOT / "models" / "ggml-medium-q5_0.bin"
     log_paths = tuple(sorted(_state_dir().glob(f"{_log_path().name}*")))
     paths = (
         PROJECT_ROOT / ".venv",
-        model_path,
-        model_path.with_suffix(model_path.suffix + ".part"),
         _runtime_path(),
         *log_paths,
         _state_dir() / "command.lock",
@@ -446,7 +443,7 @@ def _remove_installation_files() -> bool:
             print(f"无法删除 {path}：{exc}", file=sys.stderr)
             success = False
 
-    for directory in (PROJECT_ROOT / "models", _state_dir()):
+    for directory in (_state_dir(),):
         try:
             directory.rmdir()
         except (FileNotFoundError, OSError):

@@ -204,9 +204,6 @@ class SystemSnapshot:
     cookie: ComponentStatus
     yt_dlp: ComponentStatus
     ffmpeg: ComponentStatus
-    whisper_cpp: ComponentStatus
-    model: ComponentStatus
-    vad_model: ComponentStatus
 
     @property
     def ready(self) -> bool:
@@ -218,8 +215,5 @@ class SystemSnapshot:
                 self.cookie,
                 self.yt_dlp,
                 self.ffmpeg,
-                self.whisper_cpp,
-                self.model,
-                self.vad_model,
             )
         )

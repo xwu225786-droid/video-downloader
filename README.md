@@ -15,7 +15,7 @@
 - 支持抖音、小红书、Bilibili 等分享链接；实际可用性取决于平台访问权限、作品状态与下载器支持情况。
 - 支持单条和批量处理、历史任务、素材标签、搜索和本地视频预览。
 - 视频下载完成即可先预览，字幕识别和可选的 AI 总结在后续阶段继续处理。
-- 语音识别支持本地 Whisper、硅基流动及其他 OpenAI 兼容语音转文字接口。支持编辑、复制和 TXT；时间轴、SRT 取决于模型是否返回时间戳。
+- 语音识别支持硅基流动及其他 OpenAI 兼容语音转文字接口。支持编辑、复制和 TXT；时间轴、SRT 取决于模型是否返回时间戳。
 - 可配置兼容 OpenAI 接口的 AI 总结服务；首次生成和重新生成均提供确认。
 - 提供飞书机器人接入模块，默认关闭，需自行配置应用凭证与权限。
 
@@ -23,7 +23,7 @@
 
 这是当前应用的**源码版本**，提供 macOS 原生初始化流程及 Windows 11 x64（Intel / AMD）原生安装、启动入口。Windows 自动验证见 [GitHub Actions](https://github.com/xwu225786-droid/video-downloader/actions/workflows/windows.yml)。尚未提供单文件安装包；Windows ARM、32 位系统不在当前适配范围内。
 
-仓库不包含下载视频、登录 Cookie、接口密钥、历史任务、运行环境和模型权重。首次使用仍需准备依赖与语音识别模型。
+仓库不包含下载视频、登录 Cookie、接口密钥、历史任务、运行环境和模型权重。首次使用需要安装运行依赖，并在设置中配置云端语音模型。
 
 ## 快速开始：macOS 原生运行
 
@@ -36,7 +36,7 @@ bash scripts/bootstrap.sh
 uv run vox start
 ```
 
-初始化脚本会准备 Python 依赖、Chromium，并提示安装 FFmpeg、whisper.cpp 和下载 Whisper/VAD 模型。Whisper 模型约 514 MiB，完整安装所需空间会大于源码包。
+初始化脚本会准备 Python 依赖、Chromium，并提示安装 FFmpeg。
 
 启动后查看终端提供的地址，默认网页入口为 <http://127.0.0.1:18765/>。
 
@@ -46,17 +46,17 @@ uv run vox start
 uv run vox stop
 ```
 
-需要登录或平台验证时，请在应用提供的浏览器窗口完成。AI 总结需在页面设置中填写你自己的接口地址、模型和 API Key；语音识别默认在本地运行，也可在“设置 → AI 配置 → 语音模型”切换到云端接口。
+需要登录或平台验证时，请在应用提供的浏览器窗口完成。AI 总结需在页面设置中填写你自己的接口地址、模型和 API Key；提取字幕前，请在“设置 → AI 配置 → 语音模型”保存云端接口配置。
 
 ## 快速开始：Windows 11 x64
 
 从 GitHub 点击 **Code → Download ZIP**，解压到自己的可写目录（不要放在压缩包内直接运行），不需要安装 GitHub 软件或 Docker。
 
-1. 双击根目录 **`Windows安装.bat`**，首次联网安装 Python 3.14、项目依赖、Chromium、FFmpeg、whisper.cpp 和 Whisper / VAD 模型。模型约 514 MiB，请预留数 GB 磁盘空间。所有运行组件放在项目目录，不需要管理员权限。
+1. 双击根目录 **`Windows安装.bat`**，首次联网安装 Python 3.14、项目依赖、Chromium和 FFmpeg。所有运行组件放在项目目录，不需要管理员权限。
 2. 安装完成后双击 **`Windows启动.bat`**，网页自动打开；关闭启动终端后，服务继续在后台运行。
 3. 退出应用时双击 **`Windows停止.bat`**。关闭网页不会停止后台服务。
 
-安装、启动失败时，窗口会保留错误信息；服务日志位于 `.local-tools/state/server.log`。安装程序可重复运行，下载包和模型均校验 SHA-256。网络下载失败可检查 GitHub / Hugging Face 访问后重试；更多配置见 [Windows 使用说明](docs/Windows使用说明.md)。
+安装、启动失败时，窗口会保留错误信息；服务日志位于 `.local-tools/state/server.log`。安装程序可重复运行，下载包和模型均校验 SHA-256。网络下载失败可检查 GitHub 访问后重试；更多配置见 [Windows 使用说明](docs/Windows使用说明.md)。
 
 Windows 可通过应用的登录窗口保存登录态。现有的“同步系统 Chrome 登录态”功能仍仅支持 macOS；Windows 不使用该入口。原 `.command` 和 Docker 维护脚本属于 macOS 开发环境，Windows 使用上面的 `.bat` 入口。
 
@@ -68,11 +68,13 @@ Windows 可通过应用的登录窗口保存登录态。现有的“同步系统
 
 语音模型与 LLM 处理模型在同一个设置窗口中直接配置、分别保存，无需额外打开弹窗。语音模型支持自动获取模型、手动输入、显示/隐藏 Key，以及“测试连接”。测试使用内置短语音验证实际转写接口，可能产生少量费用；测试不会保存配置。只有点击测试按钮才会发起转写测试。LLM 处理模型也支持独立测试连接，使用一条简短测试请求，不发送视频文案；同样不修改已保存配置。两组按钮均为上方白色“测试连接”、下方并排“清除配置”和“保存”。
 
-保存后，初次视频处理与卡片“提取字幕”都会使用所选服务。音频按最多 5 分钟分段上传，长音频按原顺序合并结果；失败时提示错误，不会静默改用其他服务。云端模式不需要本地 Whisper 和识别模型，仍需要 FFmpeg 提取音频。
+保存后，初次视频处理与卡片“提取字幕”都会使用所选服务。音频按最多 5 分钟分段上传，长音频按原顺序合并结果；失败时提示错误，不会静默改用其他服务。FFmpeg 在本机提取音频，转写由云端服务完成。
 
-云端识别会把音频发送到所配置的服务，并可能产生费用。Key 仅保存在本机的 `VoxPull/data/auth/transcription.json`，不会返回给页面或写入源码；清除接口配置会恢复本地识别。
+云端识别会把音频发送到所配置的服务，并可能产生费用。Key 仅保存在本机的 `VoxPull/data/auth/transcription.json`，不会返回给页面或写入源码；清除后，重新保存接口配置即可继续提取字幕。
 
 硅基流动返回纯文本；没有真实时间戳时，只提供 TXT 和后续 AI 总结，不生成虚构的逐句时间轴或空 SRT。接口规范见 [硅基流动官方文档](https://docs.siliconflow.cn/docs/api/audio-transcriptions-post)。
+
+旧版离线转写流程见 [本地语音识别方案归档](docs/本地语音识别方案归档.md)。
 
 ## 使用流程
 
@@ -87,8 +89,6 @@ Windows 可通过应用的登录窗口保存登录态。现有的“同步系统
 仓库保留 `Dockerfile`、`compose.yaml` 和 `scripts/` 中的维护工具，详见 [Docker 部署说明](docs/Docker部署.md)。
 
 原双击 `.command` 入口依赖开发机的 `.local-tools` 布局，不是已经打包好的通用安装程序。首次在新电脑使用时，优先采用上面的原生初始化流程。
-
-Docker 构建还需要准备 `docker/vendor/whisper-source.tar`，该生成文件不随源码上传，见 [依赖来源说明](docker/vendor/README.md)。
 
 ## 目录结构
 
@@ -123,4 +123,4 @@ uv run pytest tests/unit/test_summarizer.py tests/unit/test_summary_service.py t
 
 - [VoxPull](https://github.com/memorate/VoxPull)：应用基础，见 [LICENSE](LICENSE) 与 [VoxPull/LICENSE](VoxPull/LICENSE)。
 - [captcha-recognizer](https://github.com/chenwei-zhao/captcha-recognizer)：可选第三方组件，见 [其许可文件](captcha-recognizer/LICENSE)。
-- whisper.cpp、FFmpeg、Chromium 等运行依赖按各自许可证分发，本仓库不捆绑这些运行时和模型权重。
+- FFmpeg、Chromium 等运行依赖按各自许可证分发，本仓库不捆绑这些运行时和模型权重。

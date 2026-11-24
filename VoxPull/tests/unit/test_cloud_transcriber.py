@@ -1,14 +1,13 @@
+import json
 import asyncio
 import io
 import wave
-from unittest.mock import AsyncMock
 
 import httpx
 import pytest
 
-from voxpull.domain.errors import InvalidInputError, TranscriptionFailedError
-from voxpull.domain.models import Transcript
-from voxpull.infrastructure.cloud_transcriber import SelectableTranscriber, SILICONFLOW_BASE, SILICONFLOW_MODEL
+from voxpull.domain.errors import DependencyMissingError, InvalidInputError, TranscriptionFailedError
+from voxpull.infrastructure.cloud_transcriber import CloudTranscriber, SILICONFLOW_BASE, SILICONFLOW_MODEL
 
 
 def audio_file(tmp_path, seconds=1):
@@ -20,29 +19,29 @@ def audio_file(tmp_path, seconds=1):
 
 
 def provider(tmp_path, handler=None):
-    local = AsyncMock()
-    local.transcribe.return_value = Transcript('本地结果', (), 'zh')
-    return SelectableTranscriber(local, tmp_path / 'auth/speech.json',
+    return CloudTranscriber(tmp_path / 'auth/speech.json',
         transport=httpx.MockTransport(handler) if handler else None)
 
 
-async def test_local_default_and_persist_cloud_selection(tmp_path):
+async def test_unconfigured_default_and_persist_cloud_selection(tmp_path):
     service = provider(tmp_path)
-    assert (await service.transcribe(None, 'zh', tmp_path, lambda *_: None)).text == '本地结果'
+    with pytest.raises(DependencyMissingError, match='云端接口配置'):
+        await service.transcribe(None, 'zh', tmp_path, lambda *_: None)
     service.configure('siliconflow', SILICONFLOW_BASE, SILICONFLOW_MODEL, 'test-secret')
     assert 'test-secret' not in str(service.status())
     assert 'test-secret' not in repr(service.config)
     restored = provider(tmp_path)
     restored.load()
     assert restored.config.api_key == 'test-secret'
-    restored.configure('local', SILICONFLOW_BASE, SILICONFLOW_MODEL, '')
+    with pytest.raises(InvalidInputError, match='不支持'):
+        restored.configure('local', SILICONFLOW_BASE, SILICONFLOW_MODEL, '')
     restored.configure('siliconflow', SILICONFLOW_BASE, SILICONFLOW_MODEL, '')
     assert restored.config.api_key == 'test-secret'
     with pytest.raises(InvalidInputError, match='Key'):
         restored.configure('compatible', 'https://other.example/v1', 'asr', '')
     assert restored.config.provider == 'siliconflow'
     restored.clear()
-    assert not restored.config_path.exists() and restored.status()['provider'] == 'local'
+    assert not restored.config_path.exists() and not restored.status()['configured']
 
 
 async def test_siliconflow_multipart_and_text_without_invented_timestamps(tmp_path):
@@ -58,7 +57,6 @@ async def test_siliconflow_multipart_and_text_without_invented_timestamps(tmp_pa
     result = await service.transcribe(audio_file(tmp_path), 'zh', tmp_path, lambda *_: None)
     assert result.text == '这是识别结果' and result.segments == ()
     assert result.detected_language == 'unknown'
-    service.local.transcribe.assert_not_called()
 
 
 async def test_long_audio_chunks_order_and_real_segment_offsets(tmp_path, monkeypatch):
@@ -92,7 +90,6 @@ async def test_cloud_errors_do_not_leak_keys_or_fallback(tmp_path, status):
     with pytest.raises(TranscriptionFailedError) as error:
         await service.transcribe(audio_file(tmp_path), 'auto', tmp_path, lambda *_: None)
     assert 'secret-key' not in str(error.value) and 'private' not in str(error.value)
-    service.local.transcribe.assert_not_called()
     assert service._active == 0
 
 
@@ -180,3 +177,16 @@ async def test_probe_does_not_claim_success_without_recognized_text(tmp_path, pa
     service = provider(tmp_path, lambda _: httpx.Response(200, json=payload))
     with pytest.raises(TranscriptionFailedError, match='未返回'):
         await service.test_connection(provider='siliconflow', base_url=SILICONFLOW_BASE, model=SILICONFLOW_MODEL, api_key='key')
+
+
+async def test_legacy_offline_configuration_does_not_enable_cloud_upload(tmp_path):
+    service = provider(tmp_path, lambda request: pytest.fail("Cloud call was not authorized"))
+    service.config_path.parent.mkdir()
+    service.config_path.write_text(json.dumps({
+        'provider': 'local', 'base_url': SILICONFLOW_BASE,
+        'model': SILICONFLOW_MODEL, 'api_key': 'previous-key',
+    }), encoding='utf-8')
+    service.load()
+    assert not service.status()['configured']
+    with pytest.raises(DependencyMissingError, match='云端接口配置'):
+        await service.transcribe(audio_file(tmp_path), 'zh', tmp_path, lambda *_: None)

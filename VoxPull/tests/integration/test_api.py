@@ -31,14 +31,11 @@ def make_settings(tmp_path: Path) -> Settings:
         host="127.0.0.1",
         port=8000,
         data_dir=tmp_path / "data",
-        model_path=tmp_path / "models" / "model.bin",
         ffmpeg_bin="ffmpeg",
-        whisper_bin="whisper-cli",
         max_queue=2,
         browser_timeout_seconds=1,
         download_timeout_seconds=1,
         ffmpeg_timeout_seconds=1,
-        whisper_timeout_seconds=1,
     )
 
 

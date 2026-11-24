@@ -278,7 +278,7 @@ async def test_pipeline_limits_ffmpeg_and_whisper_and_deduplicates_downloads(
         transcriber,
         storage,
         ffmpeg_concurrency=2,
-        whisper_concurrency=2,
+        transcription_concurrency=2,
     )
     for job_id in ("one", "two", "three"):
         repository.add(Job(job_id, "https://v.douyin.com/test/", "zh"))
@@ -347,7 +347,7 @@ async def test_pipeline_limits_downloads_to_five(tmp_path: Path) -> None:
         LocalStorage(tmp_path / "work", tmp_path / "videos"),
         download_concurrency=5,
         ffmpeg_concurrency=6,
-        whisper_concurrency=6,
+        transcription_concurrency=6,
     )
     job_ids = tuple(f"job-{index}" for index in range(6))
     for job_id in job_ids:

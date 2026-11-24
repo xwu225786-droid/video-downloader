@@ -69,7 +69,7 @@ async def test_card_actions_order_extraction_retry_and_summary_isolation(static_
                 data = {'tags': [], 'assignments': {}}
             elif path == '/api/system':
                 data = {key: {'ready': True, 'detail': 'ready'} for key in
-                        ['python','playwright','chromium','cookie','yt_dlp','ffmpeg','whisper_cpp','model','vad_model']}
+                        ['python','playwright','chromium','cookie','yt_dlp','ffmpeg']}
                 data.update(video_storage_path='/mock', image_storage_path='/mock')
             elif path.endswith('/status') and not path.startswith('/api/jobs/'):
                 data = {'status': 'ready', 'session_shared': True}

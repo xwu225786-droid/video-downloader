@@ -1,4 +1,4 @@
-param([switch]$SkipModels, [switch]$Dev)
+param([switch]$Dev)
 . "$PSScriptRoot\windows-common.ps1"
 Assert-Windows
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
@@ -29,7 +29,7 @@ function Save-Verified {
 }
 
 $runtime = @{}
-foreach ($name in @('uv', 'ffmpeg', 'whisper')) {
+foreach ($name in @('uv', 'ffmpeg')) {
     $asset = $manifest.$name
     $archive = Join-Path $ToolsRoot "$name-$($asset.sha256).zip"
     Save-Verified @($asset.url) $archive $asset.sha256
@@ -44,7 +44,6 @@ foreach ($name in @('uv', 'ffmpeg', 'whisper')) {
     if ($executables.Count -ne 1) { throw "Expected exactly one $($asset.executable) in $name." }
     $runtime[$name] = $executables[0].FullName
 }
-# Retain all whisper DLLs alongside the executable; do not copy only the EXE.
 $runtime | ConvertTo-Json | Set-Content -LiteralPath $RuntimeFile -Encoding UTF8
 Set-AppEnvironment
 $uv = $runtime['uv']
@@ -56,20 +55,5 @@ try {
     Invoke-Checked $uv $sync
     Invoke-Checked $Python @('-m', 'playwright', 'install', 'chromium')
     Invoke-Checked $runtime['ffmpeg'] @('-version')
-    Invoke-Checked $runtime['whisper'] @('--help')
-    if (-not $SkipModels) {
-        $modelDirectory = Join-Path $AppRoot 'models'
-        New-Item -ItemType Directory -Force -Path $modelDirectory | Out-Null
-        foreach ($model in $manifest.models) {
-            $override = [Environment]::GetEnvironmentVariable($model.override, 'Process')
-            if ($override) { $urls = @($override) }
-            else {
-                $mirror = if ($env:VOXPULL_HF_ENDPOINT) { $env:VOXPULL_HF_ENDPOINT.TrimEnd('/') } else { 'https://hf-mirror.com' }
-                $urls = @("$mirror/$($model.path)?download=true", "https://huggingface.co/$($model.path)?download=true")
-            }
-            Save-Verified $urls (Join-Path $modelDirectory $model.filename) $model.sha256
-        }
-    }
 } finally { Pop-Location }
 Write-Host 'Installation complete. Use the Windows start launcher in the repository root.'
-if ($SkipModels) { Write-Warning 'Models were skipped; transcription needs a full installation.' }

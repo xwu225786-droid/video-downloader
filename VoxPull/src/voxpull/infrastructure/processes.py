@@ -89,7 +89,7 @@ class ProcessRunner:
         if process.returncode is not None:
             return
         if sys.platform == "win32":
-            # Kill the owned process tree, including FFmpeg/Whisper descendants.
+            # Kill the owned process tree, including FFmpeg descendants.
             # terminate() on Windows would kill only the immediate child.
             def terminate_tree() -> None:
                 result = subprocess.run(

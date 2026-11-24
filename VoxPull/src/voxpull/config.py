@@ -18,19 +18,15 @@ class Settings:
     host: str
     port: int
     data_dir: Path
-    model_path: Path
     ffmpeg_bin: str
-    whisper_bin: str
     max_queue: int
     browser_timeout_seconds: float
     download_timeout_seconds: float
     ffmpeg_timeout_seconds: float
-    whisper_timeout_seconds: float
-    vad_model_path: Path | None = None
     max_concurrency: int = 5
     download_concurrency: int = 5
     ffmpeg_concurrency: int = 2
-    whisper_concurrency: int = 2
+    transcription_concurrency: int = 2
     summary_timeout_seconds: float = 180
     summary_concurrency: int = 2
     summary_max_input_chars: int = 200_000
@@ -81,23 +77,15 @@ class Settings:
             host=os.getenv("VOXPULL_HOST", "127.0.0.1"),
             port=int(os.getenv("VOXPULL_PORT", "18765")),
             data_dir=_env_path("VOXPULL_DATA_DIR", PROJECT_ROOT / "data"),
-            model_path=_env_path(
-                "VOXPULL_MODEL_PATH", PROJECT_ROOT / "models" / "ggml-medium-q5_0.bin"
-            ),
             ffmpeg_bin=os.getenv("VOXPULL_FFMPEG_BIN", "ffmpeg"),
-            whisper_bin=os.getenv("VOXPULL_WHISPER_BIN", "whisper-cli"),
             max_queue=max(1, int(os.getenv("VOXPULL_MAX_QUEUE", "10"))),
             browser_timeout_seconds=float(os.getenv("VOXPULL_BROWSER_TIMEOUT", "120")),
             download_timeout_seconds=float(os.getenv("VOXPULL_DOWNLOAD_TIMEOUT", "900")),
             ffmpeg_timeout_seconds=float(os.getenv("VOXPULL_FFMPEG_TIMEOUT", "900")),
-            whisper_timeout_seconds=float(os.getenv("VOXPULL_WHISPER_TIMEOUT", "3600")),
-            vad_model_path=_env_path(
-                "VOXPULL_VAD_MODEL_PATH", PROJECT_ROOT / "models" / "ggml-silero-v6.2.0.bin"
-            ),
             max_concurrency=max(1, int(os.getenv("VOXPULL_MAX_CONCURRENCY", "5"))),
             download_concurrency=max(1, int(os.getenv("VOXPULL_DOWNLOAD_CONCURRENCY", "5"))),
             ffmpeg_concurrency=max(1, int(os.getenv("VOXPULL_FFMPEG_CONCURRENCY", "2"))),
-            whisper_concurrency=max(1, int(os.getenv("VOXPULL_WHISPER_CONCURRENCY", "2"))),
+            transcription_concurrency=max(1, int(os.getenv("VOXPULL_TRANSCRIPTION_CONCURRENCY", "2"))),
             summary_timeout_seconds=float(os.getenv("VOXPULL_SUMMARY_TIMEOUT", "180")),
             summary_concurrency=max(1, int(os.getenv("VOXPULL_SUMMARY_CONCURRENCY", "2"))),
             summary_max_input_chars=max(
@@ -112,8 +100,5 @@ class Settings:
             self.videos_dir,
             self.images_dir,
             self.work_dir,
-            self.model_path.parent,
         ):
             path.mkdir(parents=True, exist_ok=True)
-        if self.vad_model_path is not None:
-            self.vad_model_path.parent.mkdir(parents=True, exist_ok=True)

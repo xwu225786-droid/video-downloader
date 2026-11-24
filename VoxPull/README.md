@@ -4,7 +4,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-VoxPull 是一个本地媒体归档与视频转写工具。粘贴抖音、小红书、Bilibili 等平台的分享链接，即可保存视频、图集和 Live 图；视频会继续通过本机的 whisper.cpp 提取文案。
+VoxPull 是一个本地媒体归档与视频转写工具。粘贴抖音、小红书、Bilibili 等平台的分享链接，即可保存视频、图集和 Live 图；视频会继续通过配置好的云端语音模型提取文案。
 
 > 服务默认只监听 `127.0.0.1`。媒体需要联网下载，音频和语音识别始终在本机进行；只有用户主动
 > 生成 AI 总结时，当前编辑的文案和时间轴文本才会发送给 DeepSeek。
@@ -37,7 +37,7 @@ VoxPull 是一个本地媒体归档与视频转写工具。粘贴抖音、小红
 
 - [Homebrew](https://brew.sh/zh-cn/)；
 - 可用的网络；处理抖音链接时还需要抖音账号；
-- Whisper 模型约 514 MiB，另需为 Chromium、依赖和媒体预留空间。
+- 为 Chromium、依赖和媒体预留空间。
 
 项目不要求预先安装 Python。进入项目目录后执行：
 
@@ -47,11 +47,11 @@ chmod +x scripts/bootstrap.sh
 ./scripts/bootstrap.sh
 ```
 
-初始化脚本会准备 Python 3.14、项目依赖、Chromium、ffmpeg、whisper.cpp、Whisper 和 VAD 模型，
-并安装全局 `vox` 命令。遇到系统依赖和模型下载确认时输入 `y`；也可以无交互执行：
+初始化脚本会准备 Python 3.14、项目依赖、Chromium和 ffmpeg，
+并安装全局 `vox` 命令。遇到系统依赖安装确认时输入 `y`；也可以无交互执行：
 
 ```bash
-VOXPULL_INSTALL_SYSTEM=1 VOXPULL_DOWNLOAD_MODEL=1 ./scripts/bootstrap.sh
+VOXPULL_INSTALL_SYSTEM=1 ./scripts/bootstrap.sh
 ```
 
 安装完成后启动服务：
@@ -130,15 +130,12 @@ VOXPULL_PORT=18766 vox start
 | `VOXPULL_HOST` | `127.0.0.1` | 监听地址 |
 | `VOXPULL_PORT` | `18765` | 服务端口 |
 | `VOXPULL_DATA_DIR` | `data/` | Cookie、浏览器资料和媒体目录 |
-| `VOXPULL_MODEL_PATH` | `models/ggml-medium-q5_0.bin` | Whisper 模型 |
-| `VOXPULL_VAD_MODEL_PATH` | `models/ggml-silero-v6.2.0.bin` | Silero VAD 模型 |
 | `VOXPULL_FFMPEG_BIN` | `ffmpeg` | ffmpeg 命令或路径 |
-| `VOXPULL_WHISPER_BIN` | `whisper-cli` | whisper.cpp 命令或路径 |
 | `VOXPULL_MAX_QUEUE` | `10` | 最大等待任务数 |
 | `VOXPULL_MAX_CONCURRENCY` | `5` | 最大同时处理任务数 |
 | `VOXPULL_DOWNLOAD_CONCURRENCY` | `5` | 最大同时探测或下载任务数，也是图片文件并发上限 |
 | `VOXPULL_FFMPEG_CONCURRENCY` | `2` | 最大同时音频转换数 |
-| `VOXPULL_WHISPER_CONCURRENCY` | `2` | 最大同时语音识别数 |
+| `VOXPULL_TRANSCRIPTION_CONCURRENCY` | `2` | 最大同时语音识别数 |
 | `VOXPULL_SUMMARY_TIMEOUT` | `180` | 单次 DeepSeek 总结的总超时秒数 |
 | `VOXPULL_SUMMARY_CONCURRENCY` | `2` | 最大同时生成 AI 总结数 |
 | `VOXPULL_SUMMARY_MAX_INPUT_CHARS` | `200000` | 当前编辑文案可用于总结的最大字符数 |
@@ -148,11 +145,8 @@ VOXPULL_PORT=18766 vox start
 `server.log`，历史日志以 `server.log.YYYY-MM-DD` 命名；每条日志都包含日期、时间、级别和模块名。
 
 超时还可通过 `VOXPULL_BROWSER_TIMEOUT`（120 秒）、`VOXPULL_DOWNLOAD_TIMEOUT`（900 秒）、
-`VOXPULL_FFMPEG_TIMEOUT`（900 秒）和 `VOXPULL_WHISPER_TIMEOUT`（3600 秒）调整。修改后台
+`VOXPULL_FFMPEG_TIMEOUT`（900 秒）调整。修改后台
 服务配置时，先执行 `vox stop`，再用新变量启动。
-
-模型下载默认先使用 `https://hf-mirror.com`，失败后尝试 Hugging Face 官方源；可通过
-`VOXPULL_HF_ENDPOINT` 更换镜像，或用 `VOXPULL_MODEL_URL`、`VOXPULL_VAD_MODEL_URL` 分别指定下载直链。
 
 ## 常见问题
 
@@ -176,27 +170,17 @@ tail -n 100 ~/.local/state/voxpull/server.log
 VOXPULL_PORT=18766 vox start
 ```
 
-### Chromium、ffmpeg、whisper.cpp 或模型缺失
+### Chromium 或 ffmpeg 缺失
 
 ```bash
 uv run playwright install chromium
-brew install ffmpeg whisper-cpp
-VOXPULL_DOWNLOAD_MODEL=1 ./scripts/bootstrap.sh
+brew install ffmpeg
 vox restart
 ```
 
-只需执行与缺失项对应的命令。
+### 提取字幕前配置模型
 
-### 识别结果反复出现同一句
-
-这通常是 Whisper 把静音、纯音乐或底噪误判为语音后产生的幻觉，历史文本上下文会让错误在
-后续分块中自我强化。VoxPull 默认用 Silero VAD 过滤无人声区间，并限制 Whisper 的文本上下文长度。
-如果环境检查显示 VAD 模型缺失，请执行：
-
-```bash
-VOXPULL_DOWNLOAD_MODEL=1 ./scripts/bootstrap.sh
-vox restart
-```
+在“设置 → AI 配置 → 语音模型”填写接口地址、模型和 API Key，测试连接后保存。
 
 ### 抖音要求重新登录
 

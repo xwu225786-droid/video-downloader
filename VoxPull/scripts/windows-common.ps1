@@ -29,13 +29,12 @@ function Set-AppEnvironment {
         throw 'Runtime not installed. Run the Windows installation launcher in the repository root first.'
     }
     $runtime = Get-Content -LiteralPath $RuntimeFile -Raw -Encoding UTF8 | ConvertFrom-Json
-    foreach ($name in @('uv', 'ffmpeg', 'whisper')) {
+    foreach ($name in @('uv', 'ffmpeg')) {
         if (-not (Test-Path -LiteralPath $runtime.$name)) {
             throw "Missing $name runtime. Run the Windows installer again."
         }
     }
     Set-DefaultEnvironment 'VOXPULL_FFMPEG_BIN' $runtime.ffmpeg
-    Set-DefaultEnvironment 'VOXPULL_WHISPER_BIN' $runtime.whisper
     Set-DefaultEnvironment 'VOXPULL_STATE_DIR' (Join-Path $RepoRoot '.local-tools\state')
     Set-DefaultEnvironment 'PLAYWRIGHT_BROWSERS_PATH' (Join-Path $RepoRoot '.local-tools\browsers')
     Set-DefaultEnvironment 'UV_PYTHON_INSTALL_DIR' (Join-Path $ToolsRoot 'python')
@@ -43,5 +42,5 @@ function Set-AppEnvironment {
     Set-DefaultEnvironment 'UV_CACHE_DIR' (Join-Path $ToolsRoot 'cache')
     $env:PYTHONUTF8 = '1'
     $env:PYTHONIOENCODING = 'utf-8'
-    $env:PATH = (Split-Path $runtime.ffmpeg -Parent) + ';' + (Split-Path $runtime.whisper -Parent) + ';' + $env:PATH
+    $env:PATH = (Split-Path $runtime.ffmpeg -Parent) + ';' + $env:PATH
 }

@@ -106,9 +106,9 @@ async def test_stopping_batch_clears_pending_and_marks_unfinished_jobs_failed():
 async def test_batch_api_results_archive_and_failed_only_retry(tmp_path: Path):
     settings = Settings(
         host="127.0.0.1", port=8000, data_dir=tmp_path / "data",
-        model_path=tmp_path / "model.bin", ffmpeg_bin="ffmpeg", whisper_bin="whisper-cli",
+        ffmpeg_bin="ffmpeg",
         max_queue=1, browser_timeout_seconds=1, download_timeout_seconds=1,
-        ffmpeg_timeout_seconds=1, whisper_timeout_seconds=1,
+        ffmpeg_timeout_seconds=1,
     )
     app = create_app(settings)
     service = app.state.container.job_service

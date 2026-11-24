@@ -47,20 +47,13 @@ def prepare():
               "VOXPULL_HTTP_PORT": "18765", "VOXPULL_CONSOLE_PORT": "6080"}
     ENV_FILE.write_text("\n".join(f"{key}={json.dumps(value,ensure_ascii=False)}" for key, value in values.items()) + "\n")
     ENV_FILE.chmod(0o600)
-    archive = ROOT / "docker/vendor/whisper-source.tar"
-    if not archive.is_file():
-        archive.parent.mkdir(parents=True, exist_ok=True)
-        run(["git", "-C", ROOT / ".local-tools/whisper.cpp", "archive", "HEAD", "-o", archive])
 
 
 def native_env():
     env = os.environ.copy()
     env.update(VOXPULL_STATE_DIR=str(STATE), VOXPULL_DATA_DIR=str(DATA), VOXPULL_HOST="127.0.0.1", VOXPULL_PORT="18765",
                PLAYWRIGHT_BROWSERS_PATH=str(ROOT/".local-tools/browsers"),
-               VOXPULL_MODEL_PATH=str(ROOT/"VoxPull/models/ggml-medium-q5_0.bin"),
-               VOXPULL_VAD_MODEL_PATH=str(ROOT/"VoxPull/models/ggml-silero-v6.2.0.bin"),
-               VOXPULL_FFMPEG_BIN=str(ROOT/".local-tools/bin/ffmpeg"),
-               VOXPULL_WHISPER_BIN=str(ROOT/".local-tools/whisper.cpp/build/bin/whisper-cli"))
+               VOXPULL_FFMPEG_BIN=str(ROOT/".local-tools/bin/ffmpeg"))
     env.pop("VOXPULL_HOST_BRIDGE_DIR", None)
     env.pop("VOXPULL_BROWSER_PROFILE_DIR", None)
     return env

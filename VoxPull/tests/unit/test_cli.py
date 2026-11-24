@@ -50,9 +50,6 @@ def test_unstall_removes_installed_files(tmp_path, monkeypatch, capsys) -> None:
     python_path = project_root / ".venv" / ("Scripts/python.exe" if sys.platform == "win32" else "bin/python")
     python_path.parent.mkdir(parents=True)
     python_path.touch()
-    model_path = project_root / "models" / "ggml-medium-q5_0.bin"
-    model_path.parent.mkdir(parents=True)
-    model_path.touch()
     data_path = project_root / "data" / "videos" / "example.mp4"
     data_path.parent.mkdir(parents=True)
     data_path.touch()
@@ -79,7 +76,6 @@ def test_unstall_removes_installed_files(tmp_path, monkeypatch, capsys) -> None:
         ["/usr/local/bin/uv", "tool", "uninstall", "voxpull"],
     ]
     assert not (project_root / ".venv").exists()
-    assert not model_path.exists()
     assert not (state_dir / "server.log").exists()
     assert not (state_dir / "server.log.2026-07-12").exists()
     assert data_path.exists()

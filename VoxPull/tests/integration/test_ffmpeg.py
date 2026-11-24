@@ -9,7 +9,7 @@ from voxpull.infrastructure.processes import ProcessRunner
 
 
 @pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg is not installed")
-async def test_real_ffmpeg_adapter_creates_whisper_wav(tmp_path: Path) -> None:
+async def test_real_ffmpeg_adapter_creates_pcm_wav(tmp_path: Path) -> None:
     runner = ProcessRunner()
     source = tmp_path / "source.mp4"
     output = tmp_path / "audio.wav"

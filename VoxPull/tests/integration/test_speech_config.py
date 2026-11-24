@@ -11,10 +11,10 @@ async def test_config_round_trip_without_exposing_key_and_cloud_health(tmp_path)
     app = create_app(make_settings(tmp_path))
     async with app.router.lifespan_context(app):
         c = app.state.container
-        yes, no = ComponentStatus(True, 'ready'), ComponentStatus(False, 'missing')
-        c.system_service.status = AsyncMock(return_value=SystemSnapshot(yes, yes, yes, yes, yes, yes, no, no, no))
+        yes = ComponentStatus(True, 'ready')
+        c.system_service.status = AsyncMock(return_value=SystemSnapshot(yes, yes, yes, yes, yes, yes))
         async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url='http://test') as client:
-            assert (await client.get('/api/transcription/config')).json()['provider'] == 'local'
+            assert (await client.get('/api/transcription/config')).json()['configured'] is False
             payload = {'provider': 'siliconflow', 'base_url': 'https://api.siliconflow.cn/v1',
                        'model': 'FunAudioLLM/SenseVoiceSmall', 'api_key': 'test-only-secret'}
             response = await client.put('/api/transcription/config', json=payload)
@@ -22,9 +22,10 @@ async def test_config_round_trip_without_exposing_key_and_cloud_health(tmp_path)
             assert response.json()['has_api_key']
             assert c.job_service.pipeline.transcriber is c.transcription_provider
             status = (await client.get('/api/system')).json()
-            assert status['ready'] and status['transcription_cloud'] and not status['model']['ready']
+            assert status['ready'] and 'whisper_cpp' not in status
             assert (await client.delete('/api/transcription/config')).status_code == 204
-            assert not (await client.get('/api/system')).json()['ready']
+            assert (await client.get('/api/system')).json()['ready']
+            assert not (await client.get('/api/transcription/config')).json()['configured']
 
 
 async def test_saved_card_cloud_transcription_then_summary_and_failed_regeneration(tmp_path):

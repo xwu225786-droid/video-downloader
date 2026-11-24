@@ -7,7 +7,7 @@ router = APIRouter(prefix='/api/transcription', tags=['transcription'])
 
 
 class SpeechConfigRequest(BaseModel):
-    provider: str = 'local'
+    provider: str = 'siliconflow'
     base_url: str = SILICONFLOW_BASE
     model: str = SILICONFLOW_MODEL
     api_key: str = ''

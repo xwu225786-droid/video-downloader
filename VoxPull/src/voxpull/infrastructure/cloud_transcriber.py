@@ -1,23 +1,23 @@
-"""Selectable local or OpenAI-compatible multipart audio transcription."""
+"""Cloud speech recognition over the OpenAI-compatible transcription API."""
 from __future__ import annotations
 
 import asyncio
 import io
 import json
 import math
-import shutil
 import time
 import wave
 from dataclasses import asdict, dataclass, field
+from functools import lru_cache
 from pathlib import Path
 from urllib.parse import urlsplit
 
 import httpx
+from opencc import OpenCC
 
 from voxpull.domain.errors import DependencyMissingError, InvalidInputError, TranscriptionFailedError
 from voxpull.domain.models import Transcript, TranscriptSegment
 from voxpull.infrastructure.cookies import save_storage_state
-from voxpull.infrastructure.transcriber import _to_simplified_chinese
 
 SILICONFLOW_BASE = "https://api.siliconflow.cn/v1"
 SILICONFLOW_MODEL = "FunAudioLLM/SenseVoiceSmall"
@@ -26,15 +26,14 @@ CHUNK_SECONDS = 300  # 16 kHz mono PCM: ~9.6 MB, below common API upload limits.
 
 @dataclass(frozen=True)
 class SpeechConfig:
-    provider: str = "local"
+    provider: str = "siliconflow"
     base_url: str = SILICONFLOW_BASE
     model: str = SILICONFLOW_MODEL
     api_key: str = field(default="", repr=False)
 
 
-class SelectableTranscriber:
-    def __init__(self, local, config_path: Path, *, transport=None, timeout=180):
-        self.local = local
+class CloudTranscriber:
+    def __init__(self, config_path: Path, *, transport=None, timeout=180):
         self.config_path = config_path
         self.config = SpeechConfig()
         self.transport = transport
@@ -44,12 +43,14 @@ class SelectableTranscriber:
     def status(self):
         config = self.config
         return {"provider": config.provider, "base_url": config.base_url, "model": config.model,
-                "has_api_key": bool(config.api_key), "cloud": config.provider != "local"}
+                "has_api_key": bool(config.api_key), "configured": bool(config.api_key)}
 
     def load(self):
         if self.config_path.exists():
             try:
                 config = SpeechConfig(**json.loads(self.config_path.read_text(encoding="utf-8")))
+                if config.provider == "local":
+                    return  # Older offline settings require an explicit cloud selection.
                 self._validate(config)
             except (OSError, TypeError, ValueError, InvalidInputError) as exc:
                 raise RuntimeError("语音识别配置损坏，请检查本机配置文件") from exc
@@ -59,10 +60,8 @@ class SelectableTranscriber:
     def _validate(config):
         if not all(isinstance(value, str) for value in asdict(config).values()):
             raise InvalidInputError("语音识别配置格式无效")
-        if config.provider not in {"local", "siliconflow", "compatible"}:
+        if config.provider not in {"siliconflow", "compatible"}:
             raise InvalidInputError("不支持的语音识别方式")
-        if config.provider == "local":
-            return
         try:
             parsed = urlsplit(config.base_url)
             _ = parsed.port
@@ -113,8 +112,6 @@ class SelectableTranscriber:
 
     async def list_models(self, **payload):
         config = self.resolve_config(**payload)
-        if config.provider == 'local':
-            return []
         try:
             async with httpx.AsyncClient(timeout=15, transport=self.transport, trust_env=False,
                                          follow_redirects=False) as client:
@@ -135,14 +132,6 @@ class SelectableTranscriber:
 
     async def test_connection(self, **payload):
         config = self.resolve_config(**payload)
-        if config.provider == 'local':
-            if not (shutil.which(self.local.binary) or Path(self.local.binary).is_file()):
-                raise DependencyMissingError("找不到本地 whisper-cli")
-            if not self.local.model_path.is_file():
-                raise DependencyMissingError("找不到本地 Whisper 模型")
-            if self.local.vad_model_path and not self.local.vad_model_path.is_file():
-                raise DependencyMissingError("找不到本地 VAD 模型")
-            return {"ok": True, "message": "本地识别依赖已就绪（未执行语音识别）"}
         audio = Path(__file__).parent / 'assets' / 'speech-test.wav'
         if not audio.is_file():
             raise DependencyMissingError("缺少语音连接测试样例，请检查安装文件")
@@ -175,8 +164,8 @@ class SelectableTranscriber:
         config = self.config
         self._active += 1
         try:
-            if config.provider == 'local':
-                return await self.local.transcribe(audio_path, language, work_dir, progress)
+            if not config.api_key:
+                raise DependencyMissingError("请先在设置 → AI 配置 → 语音模型中保存云端接口配置")
             self._validate(config)
             progress(0, "正在准备云端语音识别")
             return await self._cloud(config, audio_path, language, progress)
@@ -239,3 +228,13 @@ class SelectableTranscriber:
             raise TranscriptionFailedError("接口未识别到有效语音，请检查视频音轨")
         detected = next((value for value in languages if isinstance(value, str) and value != 'auto'), 'unknown')
         return Transcript('\n'.join(texts), tuple(segments), detected)
+
+
+@lru_cache(maxsize=1)
+def _simplified_chinese_converter() -> OpenCC:
+    return OpenCC("t2s")
+
+
+def _to_simplified_chinese(text: str) -> str:
+    """Normalize speech recognition output so every result and export uses Simplified Chinese."""
+    return _simplified_chinese_converter().convert(text)

@@ -121,7 +121,7 @@ class TranscriptionPipeline:
         cover_extractor: CoverExtractorPort | None = None,
         download_concurrency: int = 5,
         ffmpeg_concurrency: int = 2,
-        whisper_concurrency: int = 2,
+        transcription_concurrency: int = 2,
     ) -> None:
         self.repository = repository
         self.browser = browser
@@ -132,7 +132,7 @@ class TranscriptionPipeline:
         self.cover_extractor = cover_extractor
         self._download_slots = asyncio.Semaphore(max(1, download_concurrency))
         self._ffmpeg_slots = asyncio.Semaphore(max(1, ffmpeg_concurrency))
-        self._whisper_slots = asyncio.Semaphore(max(1, whisper_concurrency))
+        self._transcription_slots = asyncio.Semaphore(max(1, transcription_concurrency))
         self._media_locks: dict[str, tuple[asyncio.Lock, int]] = {}
         self._media_locks_guard = asyncio.Lock()
         self._subtitle_states: dict[str, dict] = {}
@@ -181,7 +181,7 @@ class TranscriptionPipeline:
                     self._subtitle_state(job_id, message="正在提取音频")
                     await self.audio_extractor.extract(video, audio)
                 self._subtitle_state(job_id, message="等待语音识别")
-                async with self._whisper_slots:
+                async with self._transcription_slots:
                     self._subtitle_state(job_id, message="正在识别语音", progress=None)
                     transcript = await self.transcriber.transcribe(
                         audio, job.language, work,
@@ -523,7 +523,7 @@ class TranscriptionPipeline:
                     progress=56,
                     message="等待语音识别资源",
                 )
-                async with self._whisper_slots:
+                async with self._transcription_slots:
                     self._update(job_id, message="正在识别语音")
                     logger.info(
                         "job_id=%s event=transcription_started language=%s",

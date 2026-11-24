@@ -402,17 +402,9 @@ async function loadSystem() {
       cookie: "抖音 Cookie",
       yt_dlp: "yt-dlp",
       ffmpeg: "ffmpeg",
-      whisper_cpp: "whisper.cpp",
-      model: "Medium 模型",
-      vad_model: "VAD 模型",
       python: "Python",
       playwright: "Playwright",
     };
-    if (status.transcription_cloud) {
-      delete labels.whisper_cpp;
-      delete labels.model;
-      delete labels.vad_model;
-    }
     updateStoragePaths(status.video_storage_path, status.image_storage_path);
     elements.systemGrid.replaceChildren();
     const statusEntries = Object.entries(labels);
@@ -2610,7 +2602,7 @@ function updateResultContentActions(jobId) {
     const elapsed = action.elapsed_seconds || Math.floor((Date.now() - (action.startedAt || Date.now())) / 1000);
     const duration = elapsed >= 60 ? `${Math.floor(elapsed / 60)}分${elapsed % 60}秒` : `${elapsed}秒`;
     const progress = Number.isFinite(action.progress) ? ` ${action.progress}%` : "";
-    feedback.textContent = `${action.message || "正在准备提取字幕"}${progress} · 已用 ${duration}。本地识别可能需要数分钟。`;
+    feedback.textContent = `${action.message || "正在准备提取字幕"}${progress} · 已用 ${duration}。语音识别可能需要数分钟。`;
   } else feedback.textContent = subtitleBusy ? "视频已下载，可先播放；字幕正在生成。" : action.message || "";
   const summaryBusy = summaryStatus === "busy" || ["waiting", "generating"].includes(detail?.summary_state);
   elements.summaryGenerate.disabled = !hasText || summaryBusy || (detail && detail.status !== "completed");
@@ -3676,7 +3668,6 @@ async function refreshSummaryServiceStatus(resetForm = false) {
     summaryServiceStatus = {
       configured: Boolean(status.configured),
       base_url: status.base_url || "",
-      model: status.model || "",
     };
   } catch (_error) {
     summaryServiceStatus = { configured: false, base_url: "", model: "" };
@@ -3994,7 +3985,6 @@ document.querySelector("#summary-config-test").addEventListener("click", async (
   try {
     const result = await api("/api/summary/test", { method: "POST", body: JSON.stringify({
       base_url: elements.summaryConfigBase.value.trim(), api_key: elements.summaryConfigKey.value.trim(),
-      model: elements.summaryConfigModel.value.trim(),
     }) });
     if (revision !== summaryConnectionRevision) { feedback.textContent = "参数已改变，请重新测试。"; return; }
     feedback.textContent = `${result.message}${result.elapsed_ms != null ? `（${result.elapsed_ms} ms）` : ""}${result.text ? `：${result.text}` : ""}`;
@@ -4191,7 +4181,6 @@ async function startSummaryGeneration() {
     if (summaryAbortController !== controller || currentJobId !== jobId) return;
     summaryData = {
       markdown: payload.markdown || "",
-      model: payload.model || "",
       sourceText,
       generatedAt: payload.generated_at || new Date().toISOString(),
     };

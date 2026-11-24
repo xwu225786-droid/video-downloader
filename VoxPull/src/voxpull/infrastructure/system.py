@@ -41,15 +41,6 @@ class LocalSystemProbe:
             cookie=ComponentStatus(cookie_status == "ready", cookie_status),
             yt_dlp=ytdlp,
             ffmpeg=_binary_status(self.settings.ffmpeg_bin),
-            whisper_cpp=_binary_status(self.settings.whisper_bin),
-            model=ComponentStatus(
-                self.settings.model_path.is_file(), str(self.settings.model_path)
-            ),
-            vad_model=ComponentStatus(
-                self.settings.vad_model_path is not None
-                and self.settings.vad_model_path.is_file(),
-                str(self.settings.vad_model_path or "未配置 VAD 模型"),
-            ),
         )
 
 

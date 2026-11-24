@@ -38,10 +38,6 @@ class SystemStatusResponse(BaseModel):
     cookie: SystemComponent
     yt_dlp: SystemComponent
     ffmpeg: SystemComponent
-    whisper_cpp: SystemComponent
-    model: SystemComponent
-    vad_model: SystemComponent
-    transcription_cloud: bool = False
 
 
 class StorageLocationResponse(BaseModel):

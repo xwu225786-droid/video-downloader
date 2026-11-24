@@ -7,8 +7,8 @@ from test_card_actions_ui import static_app  # noqa: F401
 
 @pytest.mark.parametrize('width', [1280, 390])
 async def test_speech_configuration_ui(static_app, width):  # noqa: F811
-    saved = {'provider': 'local', 'base_url': 'https://api.siliconflow.cn/v1',
-             'model': 'FunAudioLLM/SenseVoiceSmall', 'has_api_key': False, 'cloud': False}
+    saved = {'provider': 'siliconflow', 'base_url': 'https://api.siliconflow.cn/v1',
+             'model': 'FunAudioLLM/SenseVoiceSmall', 'has_api_key': False, 'configured': False}
     requests = []
     llm_writes = []
     llm_probes = []
@@ -27,9 +27,9 @@ async def test_speech_configuration_ui(static_app, width):  # noqa: F811
                     data = route.request.post_data_json
                     requests.append(data)
                     saved.update({key: data[key] for key in ('provider', 'base_url', 'model')})
-                    saved.update(has_api_key=True, cloud=data['provider'] != 'local')
+                    saved.update(has_api_key=True, configured=True)
                 elif route.request.method == 'DELETE':
-                    saved.update(provider='local', has_api_key=False, cloud=False)
+                    saved.update(provider='siliconflow', has_api_key=False, configured=False)
                 if route.request.method == 'DELETE':
                     return await route.fulfill(status=204)
                 data = saved
@@ -42,7 +42,7 @@ async def test_speech_configuration_ui(static_app, width):  # noqa: F811
                 data = {'ok': True, 'message': '模型连通成功，测试语音已识别', 'text': 'Hello test', 'elapsed_ms': 120}
             elif path == 'system':
                 data = {key: {'ready': True, 'detail': 'ready'} for key in ('python', 'playwright', 'chromium', 'cookie', 'yt_dlp', 'ffmpeg', 'model', 'vad_model', 'whisper_cpp')}
-                data.update(video_storage_path='/videos', image_storage_path='/images', transcription_cloud=saved['cloud'])
+                data.update(video_storage_path='/videos', image_storage_path='/images')
             elif path == 'auth/douyin/status':
                 data = {'status': 'ready'}
             elif path == 'summary/config':
@@ -75,9 +75,8 @@ async def test_speech_configuration_ui(static_app, width):  # noqa: F811
         assert await page.locator('#settings-dialog button').filter(has_text='修改语音配置').count() == 0
         assert await page.locator('#settings-dialog button').filter(has_text='修改 LLM 配置').count() == 0
         assert await page.locator('#speech-dialog').get_attribute('class') == await page.locator('#summary-config-dialog').get_attribute('class')
-        await expect(page.locator('#speech-cloud-fields')).to_be_hidden()
-        await page.locator('#speech-provider').select_option('siliconflow')
-        await expect(page.locator('#speech-cloud-fields')).to_be_visible()
+        assert await page.locator('#speech-provider option[value=local]').count() == 0
+        await expect(page.locator('#speech-base')).to_be_visible()
         await expect(page.locator('#speech-model')).to_have_value('FunAudioLLM/SenseVoiceSmall')
         await page.locator('#speech-model-trigger').click()
         await page.locator('#speech-model-list .summary-model-option').filter(has_text='FunAudioLLM/SenseVoiceSmall').click()
@@ -131,8 +130,8 @@ async def test_speech_configuration_ui(static_app, width):  # noqa: F811
         await page.locator('#speech-dialog').screenshot(path=f'/tmp/voxpull-ai-settings-{width}.png')
         page.once('dialog', lambda dialog: dialog.accept())
         await page.locator('#speech-clear').click()
-        await expect(page.locator('#speech-feedback')).to_contain_text('恢复本地 Whisper')
-        assert saved['provider'] == 'local'
+        await expect(page.locator('#speech-feedback')).to_contain_text('已清除语音配置')
+        assert not saved['configured']
         assert llm_config['configured'] and llm_config['model'] == 'llm-test-model'
         assert errors == []
         await browser.close()

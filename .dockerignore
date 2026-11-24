@@ -10,3 +10,4 @@
 !VoxPull/src/**
 **/__pycache__
 **/*.pyc
+docker/vendor/

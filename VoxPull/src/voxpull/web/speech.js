@@ -2,7 +2,7 @@
   const get = (id) => document.getElementById(`speech-${id}`);
   const dialog = get('dialog');
   if (!dialog) return;
-  let saved = { provider: 'local', base_url: '', model: '', has_api_key: false };
+  let saved = { provider: 'siliconflow', base_url: '', model: '', has_api_key: false };
   let manual = false;
   let modelsController = null;
   let revision = 0;
@@ -46,20 +46,15 @@
     get('model-trigger').disabled = !names.length;
     get('model-value').textContent = get('model').value || '请先获取模型';
   };
-  const mode = () => {
-    const cloud = get('provider').value !== 'local';
-    get('cloud-fields').classList.toggle('hidden', !cloud);
-
-  };
   const renderStatus = (config) => {
     saved = config;
-    get('state').textContent = !config.cloud ? '本地 Whisper' : '已配置';
+    get('status').classList.toggle('has-error', !config.configured);
+    get('state').textContent = config.configured ? '已配置' : '未配置';
     populate();
   };
   const normalizeBase = (value) => value.trim().replace(/\/+$/, '').replace(/\/audio\/transcriptions$/, '');
   const loadModels = async () => {
     modelsController?.abort();
-    if (get('provider').value === 'local') return;
     const current = payload();
     const canReuse = saved.has_api_key && normalizeBase(current.base_url) === normalizeBase(saved.base_url);
     if (!/^https?:\/\//.test(current.base_url) || (!current.api_key && !canReuse)) {
@@ -87,7 +82,7 @@
     get('model-custom').classList.add('hidden'); get('model-trigger').classList.remove('hidden');
     get('model-manual').textContent = '手动输入';
     setModels([], saved.model || 'FunAudioLLM/SenseVoiceSmall');
-    feedback(); closeList(); mode();
+    feedback(); closeList();
   };
   document.getElementById('settings-open').addEventListener('click', () => { if (get('settings').open) void loadModels(); });
   get('settings').addEventListener('toggle', () => { if (get('settings').open) void loadModels(); });
@@ -97,13 +92,13 @@
       setModels(['FunAudioLLM/SenseVoiceSmall', 'TeleAI/TeleSpeechASR'], 'FunAudioLLM/SenseVoiceSmall');
       get('model-custom').value = 'FunAudioLLM/SenseVoiceSmall';
     }
-    revision += 1; feedback(); mode(); void loadModels();
+    revision += 1; feedback(); void loadModels();
   });
   dialog.querySelectorAll('.summary-preset[data-provider]').forEach((button) => {
     button.addEventListener('click', () => {
       get('provider').value = button.dataset.provider; get('base').value = button.dataset.baseUrl;
       setModels([], button.dataset.model); get('model-custom').value = button.dataset.model;
-      revision += 1; feedback(); mode(); void loadModels();
+      revision += 1; feedback(); void loadModels();
     });
   });
   get('key-toggle').addEventListener('click', () => {
@@ -160,10 +155,10 @@
     finally { busy(false); }
   });
   get('clear').addEventListener('click', async () => {
-    if (!window.confirm('清除语音接口配置并恢复本地 Whisper？')) return;
+    if (!window.confirm('清除语音接口配置？')) return;
     busy(true);
     try { await api('/api/transcription/config', { method: 'DELETE' });
-      renderStatus(await api('/api/transcription/config')); feedback('已清除语音配置，恢复本地 Whisper。'); void loadSystem();
+      renderStatus(await api('/api/transcription/config')); feedback('已清除语音配置。'); void loadSystem();
     } catch (error) { feedback(error.message, true); } finally { busy(false); }
   });
   api('/api/transcription/config').then(renderStatus).catch((error) => {

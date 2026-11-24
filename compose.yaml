@@ -28,10 +28,6 @@ services:
         target: ${VOXPULL_DATA_PATH:-/data}/browser-profile
         read_only: true
       - type: bind
-        source: ./VoxPull/models
-        target: /models
-        read_only: true
-      - type: bind
         source: ${VOXPULL_BRIDGE_PATH:-./.local-tools/state/docker-bridge}
         target: /run/host-bridge
       - type: volume

@@ -31,8 +31,7 @@ from voxpull.infrastructure.path_opener import NativePathOpener
 from voxpull.infrastructure.processes import ProcessRunner
 from voxpull.infrastructure.storage import LocalStorage
 from voxpull.infrastructure.system import LocalSystemProbe
-from voxpull.infrastructure.transcriber import WhisperCppTranscriber
-from voxpull.infrastructure.cloud_transcriber import SelectableTranscriber
+from voxpull.infrastructure.cloud_transcriber import CloudTranscriber
 from voxpull.api import transcription
 from voxpull.infrastructure.job_records import FileJobRepository, FileJobService
 from voxpull.logging_config import file_logging_enabled, run_log_retention_scheduler
@@ -55,7 +54,7 @@ class AppContainer:
     directory_picker: NativeDirectoryPicker
     path_opener: NativePathOpener
     feishu_service: FeishuService | None = None
-    transcription_provider: SelectableTranscriber | None = None
+    transcription_provider: CloudTranscriber | None = None
 
 
 _HTTP_STATUS_BY_ERROR = {
@@ -108,9 +107,7 @@ def build_container(settings: Settings) -> AppContainer:
         settings.images_dir,
         settings.storage_location_path,
     )
-    transcription_provider = SelectableTranscriber(
-        WhisperCppTranscriber(runner, settings.whisper_bin, settings.model_path,
-                              settings.whisper_timeout_seconds, settings.vad_model_path),
+    transcription_provider = CloudTranscriber(
         settings.auth_dir / "transcription.json",
     )
     pipeline = TranscriptionPipeline(
@@ -127,7 +124,7 @@ def build_container(settings: Settings) -> AppContainer:
         ),
         download_concurrency=settings.download_concurrency,
         ffmpeg_concurrency=settings.ffmpeg_concurrency,
-        whisper_concurrency=settings.whisper_concurrency,
+        transcription_concurrency=settings.transcription_concurrency,
     )
     summary_provider = OpenAICompatibleSummarizer(
         settings.summary_timeout_seconds,
